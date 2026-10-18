@@ -71,4 +71,7 @@ export interface BackupFile {
   trackers: Tracker[];
   progress: ProgressEntry[];
   preferences: Preferences;
+  scheduledTimers: ScheduledTimer[];
+  weeklyReset: WeeklyResetSetting[];
+  localSettings: Record<string, string>;
 }

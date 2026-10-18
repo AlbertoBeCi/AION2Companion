@@ -189,7 +189,7 @@ export function TimersPage() {
 
     <section className="weekly-reset-card">
       <div className="weekly-reset-art"><CalendarClock size={22} /></div>
-      <div className="weekly-reset-info"><span className="eyebrow">{t('weeklyReset')}</span><h2 aria-label={`${t('timeRemaining')}: ${countdown(weeklyReset, now)}`}>{countdown(weeklyReset, now)}</h2><p>{t('nextResetAt')} {weeklyResetLocal} · {t('globalService')}</p></div>
+      <div className="weekly-reset-info"><span className="eyebrow">{t('weeklyReset')}</span><h2 aria-label={`${t('timeRemaining')}: ${countdown(weeklyReset, now)}`}>{countdown(weeklyReset, now)}</h2><p>{t('nextResetAt')} {weeklyResetLocal} · {t('globalService')} · {t('resetBasedOnKst')}</p></div>
       <div className="reset-source-tag"><span className="source-dot community-dot" />{t('communitySchedule')}</div>
     </section>
 

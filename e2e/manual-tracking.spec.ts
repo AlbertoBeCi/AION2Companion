@@ -3,14 +3,14 @@ import { readFile } from 'node:fs/promises';
 
 test('manual character tracker persists through reload and offers a backup', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Tu progreso, a tu manera.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Empieza el día' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Personajes' }).first().click();
   await page.getByRole('button', { name: 'Añadir personaje' }).first().click();
   await page.getByRole('textbox').nth(0).fill('Prueba local');
   await page.getByRole('textbox').nth(1).fill('Test');
   await page.getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.locator('.character-select option:checked')).toHaveText('Prueba local · Test');
+  await expect(page.locator('.character-select .neo-select-value')).toHaveText('Prueba local · Test');
 
   await page.getByRole('button', { name: 'Crear contador' }).first().click();
   await page.getByRole('textbox').nth(0).fill('Tarea de prueba');
@@ -37,7 +37,8 @@ test('manual character tracker persists through reload and offers a backup', asy
   expect(backup.trackers.some((tracker) => tracker.provenance === 'community')).toBe(true);
   expect(backup.progress[0]?.value).toBe(1);
 
-  await page.getByRole('combobox').last().selectOption('replace');
+  await page.getByLabel('Al importar').click();
+  await page.getByRole('option', { name: 'Reemplazar los datos locales' }).click();
   await page.locator('input[type="file"]').setInputFiles(filePath!);
   await expect(page.getByRole('status')).toHaveText('Copia importada');
   await page.reload();
@@ -49,8 +50,8 @@ test('counters page starts with separate Global daily and weekly checklists', as
   await page.goto('/');
   await page.getByRole('button', { name: 'Contadores' }).first().click();
   await expect(page.getByRole('tab', { name: /Diarias/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('heading', { name: 'Duty missions (misiones de deber)' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Asistencia diaria' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Misiones de Duty' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nightmare' })).toBeVisible();
   const conquest = page.locator('.tracker-card').filter({ has: page.getByRole('heading', { name: 'Conquista', exact: true }) });
   await expect(conquest).toHaveCount(1);
   await expect(conquest.locator('.progress-label strong')).toHaveText('0 / 2');
@@ -68,10 +69,10 @@ test('preloaded counters work and persist without a character or server', async 
   await page.goto('/');
   await page.getByRole('button', { name: 'Contadores' }).first().click();
   await expect(page.getByText('Puedes llevar el progreso en este dispositivo', { exact: false })).toBeVisible();
-  const dutyTracker = page.locator('.tracker-card').filter({ has: page.getByRole('heading', { name: 'Duty missions (misiones de deber)' }) });
-  await dutyTracker.getByRole('button', { name: 'Aumentar progreso Duty missions (misiones de deber)' }).click();
+  const dutyTracker = page.locator('.tracker-card').filter({ has: page.getByRole('heading', { name: 'Misiones de Duty' }) });
+  await dutyTracker.getByRole('button', { name: 'Aumentar progreso Misiones de Duty' }).click();
   await expect(dutyTracker.getByText('1 / 5')).toBeVisible();
   await page.reload();
-  const restoredDutyTracker = page.locator('.tracker-card').filter({ has: page.getByRole('heading', { name: 'Duty missions (misiones de deber)' }) });
+  const restoredDutyTracker = page.locator('.tracker-card').filter({ has: page.getByRole('heading', { name: 'Misiones de Duty' }) });
   await expect(restoredDutyTracker.getByText('1 / 5')).toBeVisible();
 });

@@ -1,137 +1,157 @@
+<div align="center">
+
+![AION2Companion · panel de seguimiento](docs/assets/aion2-companion-banner-v2.png)
+
 # AION2Companion
 
-![AION2Companion — Track, Plan, Play](docs/assets/aion2-companion-banner.png)
+### Organiza tus tareas, temporizadores y progreso desde un solo lugar.
 
-**Compañero local para seguir actividades, temporizadores y progreso de AION 2.** Funciona sin conectar una cuenta de juego. Crear personajes o elegir servidor es opcional para los contadores personales.
+[🌐 Abrir aplicación](https://aion2companion.netlify.app/) · [📚 Documentación](#-documentación) · [🛠️ Ejecutar en local](#-ejecutar-en-local)
 
-> Proyecto comunitario independiente, no afiliado ni respaldado por NCSOFT.
+**Español** · [English](#english)
 
-## Funciones
+</div>
 
-- Registra actividades diarias y semanales con contadores de progreso.
-- Usa contadores sin crear personajes ni añadir servidores; ambos son opcionales.
-- Consulta horarios comunitarios de eventos y la cuenta atrás del reinicio semanal en la zona horaria elegida.
-- Sigue los reportes de Gartua Eterno e Inmortal por servidor Global. La cobertura depende de los reportes de jugadores; si no hay un dato utilizable, la app no inventa una cuenta atrás.
-- Activa avisos sonoros individualmente para los temporizadores que quieras.
-- Guarda preferencias y progreso en el navegador con IndexedDB y permite exportar o restaurar una copia versionada.
-- Instala la versión de producción como PWA. El shell de la app puede abrirse sin conexión tras una carga correcta; los feeds comunitarios requieren internet.
-- Interfaz en español e inglés.
+> Proyecto independiente de fans. No está afiliado ni respaldado por NC ni por los titulares de AION 2.
 
-## Datos y transparencia de fuentes
+## ✨ Qué puedes hacer
 
-La app diferencia las **reglas oficiales del juego** de las **referencias comunitarias**. El [catálogo de reglas y fuentes](docs/official-rules-catalog.json) registra alcance, región, fecha de revisión y limitaciones.
+- ✅ Llevar contadores diarios y semanales y registrar el progreso a mano.
+- 👤 Usar un perfil local sin crear personajes ni seleccionar servidor.
+- ⏱️ Consultar horarios comunitarios de jefes y eventos, y la cuenta atrás semanal.
+- 🔔 Activar avisos de sonido solo para los temporizadores que elijas.
+- 🌗 Cambiar idioma (ES/EN) y tema claro u oscuro.
+- 💾 Guardar los datos en este dispositivo, exportar una copia JSON e importarla después.
+- 📲 Instalar la versión publicada como PWA. Tras cargar sus recursos, el shell puede abrirse sin conexión; los feeds requieren internet.
 
-Las actividades preconfiguradas y los horarios de reinicio diarios y semanales se basan actualmente en datos comunitarios, identificados como tales; no se presentan como reglas oficiales de NCSOFT. Los horarios recurrentes de eventos proceden de [Shugo.GG](https://shugo.gg/timers). Los datos de última muerte y reaparición de Gartua vienen del feed comunitario de [Aion2Timers](https://www.aion2timers.com/world-boss-timer/) y AbyssLogs, no de una API oficial de NCSOFT. Los reportes y estimaciones pueden estar incompletos o variar según el servidor.
+## 🧭 Fuentes y precisión
 
-La app no se conecta a cuentas del juego ni sube el progreso personal de los contadores. El panel de Gartua consulta el feed comunitario por servidor mediante una función del mismo origen; no requiere API key.
+La app diferencia las publicaciones oficiales de NC de las referencias comunitarias. Los horarios recurrentes de eventos se basan en [Shugo.GG](https://shugo.gg/timers). Los reportes de Gartua proceden de un feed comunitario de [Aion2Timers](https://www.aion2timers.com/world-boss-timer/) y AbyssLogs. No son datos oficiales de NC y pueden variar según la región, el servidor y las actualizaciones.
 
-## Empezar
+El reinicio semanal Global se representa desde el **miércoles a las 16:00 KST** y se convierte a la hora local del navegador. Comprueba siempre los anuncios y el estado del juego. Consulta el [catálogo de reglas y fuentes](docs/official-rules-catalog.json) para conocer procedencia, región, revisión y limitaciones.
 
-### Requisitos
+## 🔒 Datos y privacidad
 
-- Node.js **20.19+** o **22.12+**
-- npm
+Los perfiles, contadores, progreso y preferencias se guardan localmente en el navegador. No se sincronizan con una cuenta del juego. Al consultar Gartua, se envía el servidor seleccionado a una función de Netlify que solicita el feed comunitario; no se envían los nombres de personaje ni el progreso personal.
 
-### Ejecutar en local
+El enlace opcional de apoyo abre [Ko-fi](https://ko-fi.com/S0U1291G5B) en otra pestaña. AION2Companion no integra el formulario ni procesa pagos. Consulta la [política de privacidad](https://aion2companion.netlify.app/#privacy) y la [auditoría técnica](docs/compliance-audit.md) para ver el inventario de almacenamiento y comunicaciones.
+
+## 🚀 Ejecutar en local
+
+**Requisitos:** Node.js 20.19+ o 22.12+, y npm.
 
 ```sh
+git clone https://github.com/AlbertoBeCi/AION2Companion.git
+cd AION2Companion
 npm install
 npm run dev
 ```
 
-Abre la dirección local que indique Vite (normalmente `http://localhost:5173`). El proxy de desarrollo para el feed de Gartua está configurado en `vite.config.ts`.
+Abre la URL local indicada por Vite, normalmente `http://localhost:5173`. El comando `npm run dev` usa el proxy local del feed de Gartua configurado en `vite.config.ts`.
 
-### Comprobaciones
+### 🧪 Comprobaciones
 
 ```sh
 npm test
 npm run build
 ```
 
-La compilación de producción se genera en `dist/`.
+La compilación de producción queda en `dist/`. GitHub Actions también ejecuta pruebas y compilación en cambios dirigidos a `main` y en pull requests.
 
-## Privacidad y datos locales
+## 🧰 Stack
 
-Las preferencias y el progreso se guardan en el navegador mediante Dexie e IndexedDB. La exportación crea una copia versionada; la importación la valida y permite fusionar por identificador o reemplazar los datos locales. Si borras los datos del sitio en el navegador, perderás el progreso que no hayas exportado.
+React · TypeScript · Vite · Dexie/IndexedDB · Zustand · i18next · Lucide · Motion · PWA/Workbox · Netlify Functions.
 
-## Publicación
-
-El proyecto genera un sitio estático en `dist/` e incluye configuración para Netlify (`netlify.toml`) y Cloudflare Pages. En Netlify, `netlify/functions/gartua-feed.mts` sirve el proxy de Gartua en la ruta que consulta la app. Conecta el repositorio Git o despliega desde la raíz para que Netlify publique tanto los archivos estáticos como la función. En Cloudflare Pages, el proxy está en `functions/fbapi/api/fieldboss.php.ts`. El comando de compilación es `npm run build` y el directorio de publicación es `dist`.
-
-GitHub Actions ejecuta pruebas y compilación en pull requests y al enviar cambios a `main` (`.github/workflows/ci.yml`). La app aún no ha pasado una auditoría legal independiente ni una verificación exhaustiva de accesibilidad e instalación offline en todos los navegadores objetivo.
-
-## Documentación
+## 📚 Documentación
 
 - [Auditoría funcional de referencia](docs/reference-audit.md)
 - [Inventario funcional](docs/functional-inventory.md)
 - [Matriz de paridad y evidencias](docs/feature-parity-matrix.md)
 - [Catálogo de reglas y fuentes](docs/official-rules-catalog.json)
+- [Auditoría técnica de privacidad y cumplimiento](docs/compliance-audit.md)
+- Licencias SIL OFL 1.1: [DM Sans](docs/licenses/DM-Sans-OFL.txt) y [Space Grotesk](docs/licenses/Space-Grotesk-OFL.txt).
+
+## ☕ Apoyar el proyecto
+
+Si te resulta útil, puedes [invitarme a un café en Ko-fi](https://ko-fi.com/S0U1291G5B). ¡Gracias por apoyar el desarrollo! 💛
 
 ---
 
+<a id="english"></a>
+
+<div align="center">
+
+![AION2Companion · tracking dashboard](docs/assets/aion2-companion-banner-v2.png)
+
 # AION2Companion
 
-**A local-first companion for tracking AION 2 activities, timers, and progress.** It works without a game account. Creating characters or selecting a server is optional for personal counters.
+### Keep your tasks, timers, and progress in one place.
 
-> This is an independent community project. It is not affiliated with or endorsed by NCSOFT.
+[🌐 Open the app](https://aion2companion.netlify.app/) · [📚 Documentation](#-documentation-1) · [🛠️ Run locally](#-run-locally)
 
-## Features
+[Español](#aion2companion) · **English**
 
-- Track daily and weekly activities with progress counters.
-- Use counters without creating characters or adding servers; both are optional.
-- View community event schedules and weekly reset countdowns in your selected time zone.
-- Follow Eternal and Immortal Gartua reports by Global server. Coverage depends on player submissions; when no usable report is available, the app does not invent a countdown.
-- Enable sound alerts individually for the timers you choose.
-- Keep preferences and progress in the browser with IndexedDB; export or restore a versioned backup.
-- Install the production app as a PWA. Its app shell can be available offline after a successful load; community feeds require an internet connection.
-- Interface available in Spanish and English.
+</div>
 
-## Data and source transparency
+> Independent fan project. Not affiliated with or endorsed by NC or the AION 2 rights holders.
 
-The app distinguishes **official game rules** from **community references**. The [rules and sources catalogue](docs/official-rules-catalog.json) records each source's scope, region, review date, and limitations.
+## ✨ What you can do
 
-Preset activities and daily/weekly reset schedules currently rely on community-maintained data and are labeled accordingly; they are not presented as official NCSOFT rules. Recurring event schedules use [Shugo.GG](https://shugo.gg/timers). Gartua last-kill and respawn information comes from the community feed provided by [Aion2Timers](https://www.aion2timers.com/world-boss-timer/) and AbyssLogs, not an official NCSOFT API. Reports and estimates may be incomplete or vary by server.
+- ✅ Track daily and weekly counters and record progress manually.
+- 👤 Use a local profile without creating characters or selecting a server.
+- ⏱️ View community schedules for bosses and events, plus the weekly countdown.
+- 🔔 Enable sound alerts only for the timers you choose.
+- 🌗 Switch between Spanish and English and light or dark themes.
+- 💾 Keep data on this device, export a JSON backup, and import it later.
+- 📲 Install the production app as a PWA. After its resources load, the app shell can open offline; community feeds need internet access.
 
-The app does not connect to game accounts or upload personal counter progress. The Gartua panel requests the community feed by server through a same-origin function; no API key is required.
+## 🧭 Sources and accuracy
 
-## Getting started
+The app distinguishes NC publications from community references. Recurring event schedules are based on [Shugo.GG](https://shugo.gg/timers). Gartua reports come from a community feed provided by [Aion2Timers](https://www.aion2timers.com/world-boss-timer/) and AbyssLogs. These are not official NC data and can vary by region, server, and game update.
 
-### Requirements
+The Global weekly reset is shown as **Wednesday at 16:00 KST** and converted to the browser's local time. Always check in-game notices and status. The [rules and sources catalogue](docs/official-rules-catalog.json) records provenance, region, review date, and limitations.
 
-- Node.js **20.19+** or **22.12+**
-- npm
+## 🔒 Data and privacy
 
-### Run locally
+Profiles, trackers, progress, and preferences are stored locally in the browser. They are not synced to a game account. When you check Gartua, the selected server is sent to a Netlify function that requests the community feed; character names and personal progress are not sent.
+
+The optional support link opens [Ko-fi](https://ko-fi.com/S0U1291G5B) in a new tab. AION2Companion does not embed its form or process payments. See the [privacy policy](https://aion2companion.netlify.app/#privacy) and [technical audit](docs/compliance-audit.md) for the storage and communication inventory.
+
+## 🚀 Run locally
+
+**Requirements:** Node.js 20.19+ or 22.12+, and npm.
 
 ```sh
+git clone https://github.com/AlbertoBeCi/AION2Companion.git
+cd AION2Companion
 npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite (usually `http://localhost:5173`). The development proxy for the Gartua feed is configured in `vite.config.ts`.
+Open the local URL printed by Vite, usually `http://localhost:5173`. `npm run dev` uses the local Gartua feed proxy configured in `vite.config.ts`.
 
-### Checks
+### 🧪 Checks
 
 ```sh
 npm test
 npm run build
 ```
 
-The production build is generated in `dist/`.
+The production build is written to `dist/`. GitHub Actions also runs tests and builds for changes targeting `main` and for pull requests.
 
-## Privacy and local data
+## 🧰 Tech stack
 
-Preferences and progress are stored in the browser using Dexie and IndexedDB. Export creates a versioned backup; import validates it and supports merging by identifier or replacing local data. Clearing browser site data removes progress that has not been exported.
+React · TypeScript · Vite · Dexie/IndexedDB · Zustand · i18next · Lucide · Motion · PWA/Workbox · Netlify Functions.
 
-## Deployment
+## 📚 Documentation
 
-The project builds to `dist/` and includes configuration for both Netlify (`netlify.toml`) and Cloudflare Pages. On Netlify, `netlify/functions/gartua-feed.mts` serves the Gartua proxy at the route used by the app. Connect the Git repository or deploy from the project root so Netlify publishes both the static site and its function. The Cloudflare Pages proxy is at `functions/fbapi/api/fieldboss.php.ts`. Use `npm run build` as the build command and `dist` as the publish directory.
-
-GitHub Actions runs tests and builds for pull requests and pushes to `main` (`.github/workflows/ci.yml`). The app has not had an independent legal review or exhaustive accessibility and offline-installation testing across all target browsers.
-
-## Documentation
-
-- [External reference functional audit](docs/reference-audit.md)
+- [Reference functional audit](docs/reference-audit.md)
 - [Functional inventory](docs/functional-inventory.md)
-- [Feature parity and evidence matrix](docs/feature-parity-matrix.md)
+- [Parity and evidence matrix](docs/feature-parity-matrix.md)
 - [Rules and sources catalogue](docs/official-rules-catalog.json)
+- [Technical privacy and compliance audit](docs/compliance-audit.md)
+- SIL OFL 1.1 licenses: [DM Sans](docs/licenses/DM-Sans-OFL.txt) and [Space Grotesk](docs/licenses/Space-Grotesk-OFL.txt).
+
+## ☕ Support the project
+
+If you find it useful, you can [buy me a coffee on Ko-fi](https://ko-fi.com/S0U1291G5B). Thanks for supporting development! 💛

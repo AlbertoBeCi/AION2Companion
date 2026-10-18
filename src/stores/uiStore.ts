@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Page = 'dashboard' | 'trackers' | 'timers' | 'characters' | 'sources' | 'settings';
+export type Page = 'dashboard' | 'trackers' | 'timers' | 'characters' | 'sources' | 'settings' | 'privacy' | 'fan-notice' | 'about';
 interface UiState {
   page: Page;
   setPage: (page: Page) => void;

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('mobile dashboard and sources fit without horizontal page overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await expect(page.getByText('Tu progreso, a tu manera.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Empieza el día' })).toBeVisible();
   const dashboardWidths = await page.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: window.innerWidth }));
   expect(dashboardWidths.document).toBeLessThanOrEqual(dashboardWidths.viewport);
 

@@ -1,5 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import '@fontsource-variable/dm-sans/wght.css';
+import '@fontsource-variable/space-grotesk/wght.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './i18n';

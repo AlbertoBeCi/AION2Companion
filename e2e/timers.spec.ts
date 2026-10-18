@@ -12,10 +12,11 @@ test('Global timers are preloaded and timezone choice persists', async ({ page }
   await expect(page.getByText('Fuente comunitaria.', { exact: false })).toBeVisible();
   await expect(page.getByText('Próximo reinicio:', { exact: false })).toBeVisible();
 
-  await page.getByLabel('Zona horaria del servidor').selectOption('America/New_York');
+  await page.getByLabel('Zona horaria del servidor').click();
+  await page.getByRole('option', { name: 'NA East · New York' }).click();
   await page.reload();
   await page.getByRole('button', { name: 'Temporizadores' }).first().click();
-  await expect(page.getByLabel('Zona horaria del servidor')).toHaveValue('America/New_York');
+  await expect(page.getByLabel('Zona horaria del servidor')).toHaveText('NA East · New York');
   await expect(page.getByRole('heading', { name: 'Watcher Kaira' })).toBeVisible();
 });
 

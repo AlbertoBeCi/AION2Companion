@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Download, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Coffee, Download, ExternalLink, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { db, ensurePreferences } from './db/database';
@@ -17,13 +17,18 @@ import { CONQUEST_TRACKER_ID, seedGlobalChecklists } from './lib/checklists';
 import { globalSchedules, nextScheduleOccurrence } from './lib/schedule';
 import { playCelebrationSound } from './lib/timerAlerts';
 import { NeoSelect } from './components/NeoSelect';
+import { LegalPage } from './components/LegalPages';
+import { clearLocalSettings } from './lib/localSettings';
+import { creatorSupportUrl } from './lib/siteConfig';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
 const initialTracker = { name: '', description: '', category: '', limit: 1, scope: 'character' as TrackerScope, frequency: 'none' as ResetFrequency, resetTime: '00:00', resetWeekday: 3, resetTimeZone: undefined as string | undefined, region: 'global' as Region };
 const pageIcon = { dashboard: LayoutDashboard, trackers: Gauge, timers: TimerReset, characters: Users, sources: BookOpen, settings: Settings2 };
-const pageTitleKey: Record<Page, string> = { dashboard: 'dashboard', trackers: 'trackers', timers: 'timers', characters: 'characters', sources: 'sources', settings: 'settings' };
+const pageTitleKey: Record<Page, string> = { dashboard: 'dashboard', trackers: 'trackers', timers: 'timers', characters: 'characters', sources: 'sources', settings: 'settings', privacy: 'privacyPolicy', 'fan-notice': 'fanNotice', about: 'aboutContact' };
+const mainPages = ['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as const;
 const themeStorageKey = 'aion2-theme';
+const legalHashPage: Record<string, Page> = { '#privacy': 'privacy', '#fan-notice': 'fan-notice', '#about': 'about' };
 function applyTheme(theme: 'dark' | 'light', remember = true) {
   const root = document.documentElement;
   root.dataset.theme = theme;
@@ -70,6 +75,16 @@ function App() {
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const previousPage = useRef(page);
   const active = characters.find((character) => character.id === activeCharacter) ?? characters[0] ?? null;
+
+  useEffect(() => {
+    const syncLegalPage = () => {
+      const targetPage = legalHashPage[window.location.hash];
+      if (targetPage) setPage(targetPage);
+    };
+    syncLegalPage();
+    window.addEventListener('hashchange', syncLegalPage);
+    return () => window.removeEventListener('hashchange', syncLegalPage);
+  }, [setPage]);
 
   useEffect(() => {
     let savedTheme: string | null = null;
@@ -145,11 +160,22 @@ function App() {
 
   async function clearData(which: 'trackers' | 'characters' | 'all') {
     if (!window.confirm(t('deleteWarning'))) return;
-    if (which === 'all') await db.transaction('rw', db.characters, db.trackers, db.progress, db.preferences, async () => { const current = await db.preferences.get('main'); await Promise.all([db.characters.clear(), db.trackers.clear(), db.progress.clear(), db.preferences.clear()]); await db.preferences.put({ ...(current ?? { id: 'main' as const, language: 'es' as const, theme: 'dark' as const, compact: false }), trackerSeedVersion: 2 }); });
+    let notification = t('saved');
+    if (which === 'all') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      await db.transaction('rw', [db.characters, db.trackers, db.progress, db.preferences, db.scheduledTimers, db.weeklyReset], async () => {
+        await Promise.all([db.characters.clear(), db.trackers.clear(), db.progress.clear(), db.preferences.clear(), db.scheduledTimers.clear(), db.weeklyReset.clear()]);
+        await db.preferences.put({ id: 'main', language: 'es', theme: systemTheme, compact: false, trackerSeedVersion: 4 });
+      });
+      clearLocalSettings();
+      applyTheme(systemTheme, false);
+      if (i18n.resolvedLanguage !== 'es') await i18n.changeLanguage('es');
+      notification = t('allDataDeleted');
+    }
     if (which === 'trackers') await db.transaction('rw', db.trackers, db.progress, async () => { await Promise.all([db.trackers.clear(), db.progress.clear()]); });
     if (which === 'characters') await db.transaction('rw', db.characters, db.progress, async () => { await Promise.all([db.characters.clear(), db.progress.where('ownerKey').startsWith('character:').delete()]); });
     setActiveCharacter('');
-    notify(t('saved'));
+    notify(notification);
   }
 
   function openCharacter(character?: Character) {
@@ -171,7 +197,9 @@ function App() {
         ? <CharactersPage characters={characters} activeId={active?.id ?? ''} onAdd={() => openCharacter()} onEdit={openCharacter} onDelete={deleteCharacter} onSelect={setActiveCharacter} />
         : page === 'sources'
           ? <SourcesPage />
-          : <SettingsPage preferences={preferences} importMode={importMode} setImportMode={setImportMode} savePreferences={savePreferences} downloadBackup={downloadBackup} handleImport={handleImport} clearData={clearData} />;
+          : page === 'settings'
+            ? <SettingsPage preferences={preferences} importMode={importMode} setImportMode={setImportMode} savePreferences={savePreferences} downloadBackup={downloadBackup} handleImport={handleImport} clearData={clearData} />
+            : <LegalPage page={page} />;
 
   return <div className={`app-shell ${preferences.compact ? 'is-compact' : ''}`}>
     <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
@@ -179,7 +207,7 @@ function App() {
       <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION2</b><small>COMPANION</small></span></button>
       <div className="sidebar-caption">{t('eyebrow')}</div>
       <nav aria-label={t('mainNavigation')} className="main-nav icon-nav">
-        {(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => {
+        {mainPages.map((item) => {
           const Icon = pageIcon[item];
           const activeTrackerCount = trackers.filter((tracker) => !tracker.archived).length;
           return <button key={item} type="button" title={t(pageTitleKey[item])} data-label={t(pageTitleKey[item])} aria-label={t(pageTitleKey[item])} aria-current={page === item ? 'page' : undefined} className={`nav-link icon-btn ${page === item ? 'active' : ''}`} onClick={() => setPage(item)}><Icon size={22} strokeWidth={2.5} aria-hidden="true" /><span>{t(pageTitleKey[item])}</span>{item === 'trackers' && activeTrackerCount > 0 && <span className="nav-count" aria-hidden="true">{activeTrackerCount}</span>}</button>;
@@ -191,6 +219,7 @@ function App() {
       <ResetTicker trackers={trackers} language={preferences.language} />
       <div className="top-actions">
         <div className="character-select"><NeoSelect ariaLabel={t('selectCharacter')} value={active?.id ?? ''} onChange={(value) => setActiveCharacter(String(value))} leadingIcon={<Users size={15} />} options={[{ value: '', label: characters.length ? t('allCharacters') : t('localProfile') }, ...characters.map((character) => ({ value: character.id, label: `${character.name} · ${character.server || t('unknown')}` }))]} /></div>
+        {creatorSupportUrl && <a className="support-nav-link" href={creatorSupportUrl} target="_blank" rel="noopener noreferrer" aria-label={t('supportCreator')} title={t('supportCreator')}><Coffee size={18} strokeWidth={2.5} aria-hidden="true" /><span>Ko-fi</span></a>}
         <button className="icon-button" title={t('language')} aria-label={`${t('language')}: ${preferences.language === 'es' ? 'English' : 'Español'}`} onClick={() => void savePreferences({ language: preferences.language === 'es' ? 'en' : 'es' })}><Languages size={17} aria-hidden="true" /><span className="lang-short">{preferences.language.toUpperCase()}</span></button>
         <button type="button" className="icon-button theme-toggle" title={t('theme')} aria-label={preferences.theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')} aria-pressed={preferences.theme === 'dark'} onClick={() => void savePreferences({ theme: preferences.theme === 'dark' ? 'light' : 'dark' })}>{preferences.theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}</button>
       </div>
@@ -198,8 +227,8 @@ function App() {
     <main className="main-area" id="main-content" tabIndex={-1}>
       <div className="page-wrap"><AnimatePresence mode="wait"><motion.div id="page-content" key={page} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onAnimationComplete={() => { if (previousPage.current !== page) { document.querySelector<HTMLElement>('#page-content h1')?.focus(); previousPage.current = page; } }}>{pageContent}</motion.div></AnimatePresence></div>
     </main>
-    <nav className="mobile-nav" aria-label={t('mainNavigation')}>{(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => { const Icon = pageIcon[item]; return <button type="button" key={item} aria-current={page === item ? 'page' : undefined} aria-label={t(pageTitleKey[item])} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><small>{t(pageTitleKey[item])}</small></button>; })}</nav>
-    <footer className="app-footer"><span>AION2COMPANION</span></footer>
+    <nav className="mobile-nav" aria-label={t('mainNavigation')}>{mainPages.map((item) => { const Icon = pageIcon[item]; return <button type="button" key={item} aria-current={page === item ? 'page' : undefined} aria-label={t(pageTitleKey[item])} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><small>{t(pageTitleKey[item])}</small></button>; })}{creatorSupportUrl && <a className="mobile-support-link" href={creatorSupportUrl} target="_blank" rel="noopener noreferrer" aria-label={t('supportCreator')}><Coffee size={17} strokeWidth={2.5} aria-hidden="true" /><small>Ko-fi</small></a>}</nav>
+    <footer className="app-footer"><span className="footer-brand">AION2COMPANION</span><nav aria-label={t('legalNavigation')}><a href="#privacy" aria-current={page === 'privacy' ? 'page' : undefined}>{t('privacyPolicy')}</a><a href="#fan-notice" aria-current={page === 'fan-notice' ? 'page' : undefined}>{t('fanNotice')}</a><a href="#about" aria-current={page === 'about' ? 'page' : undefined}>{t('aboutContact')}</a>{creatorSupportUrl && <a href={creatorSupportUrl} target="_blank" rel="noopener noreferrer"><Coffee size={15} aria-hidden="true" />{t('supportCreator')}<ExternalLink size={12} aria-hidden="true" /></a>}</nav><small>{t('footerFanNotice')}</small></footer>
     {modal === 'character' && <CharacterDialog initial={editingCharacter} onClose={() => setModal(null)} onSaved={(character) => { if (!activeCharacter) setActiveCharacter(character.id); setModal(null); notify(t('saved')); }} />}
     {modal === 'tracker' && <TrackerDialog initial={editingTracker} onClose={() => setModal(null)} onSaved={() => { setModal(null); notify(t('saved')); }} />}
     <AnimatePresence>{toast && <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><Check size={16} aria-hidden="true" />{toast}</motion.div>}</AnimatePresence>
@@ -240,7 +269,10 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   };
   const dailyLabel = language === 'es' ? 'Diario' : 'Daily';
   const weeklyLabel = language === 'es' ? 'Semanal' : 'Weekly';
-  const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weekly?.resetTimeZone ?? 'Asia/Seoul' }).format(weeklyAt).toUpperCase() : '';
+  const dailyZone = daily?.resetTimeZone ?? 'Asia/Seoul';
+  const weeklyZone = weekly?.resetTimeZone ?? 'Asia/Seoul';
+  const zoneAbbreviation = (zone: string) => new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { timeZone: zone, timeZoneName: 'short' }).formatToParts(now).find((part) => part.type === 'timeZoneName')?.value ?? zone;
+  const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weeklyZone }).format(weeklyAt).toUpperCase() : '';
   const riftTime = riftAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: riftZone }).format(riftAt) : '';
   const clock = new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
   const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => {
@@ -251,8 +283,8 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
 
   return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
     <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
-    {timer('daily', dailyLabel, daily?.resetTime ?? '16:00', dailyAt, dailyFrom)}
-    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'}`, weeklyAt, weeklyFrom)}
+    {timer('daily', dailyLabel, `${daily?.resetTime ?? '16:00'} ${zoneAbbreviation(dailyZone)}`, dailyAt, dailyFrom)}
+    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'} ${zoneAbbreviation(weeklyZone)}`, weeklyAt, weeklyFrom)}
     {timer('rift', 'Rift', riftTime || '—', riftAt, riftFrom)}
   </div>;
 }
