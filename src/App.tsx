@@ -20,6 +20,7 @@ import { NeoSelect } from './components/NeoSelect';
 import { LegalPage } from './components/LegalPages';
 import { clearLocalSettings } from './lib/localSettings';
 import { creatorSupportUrl } from './lib/siteConfig';
+import { formatLocalClock } from './lib/timeDisplay';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
@@ -269,11 +270,9 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   };
   const dailyLabel = language === 'es' ? 'Diario' : 'Daily';
   const weeklyLabel = language === 'es' ? 'Semanal' : 'Weekly';
-  const dailyZone = daily?.resetTimeZone ?? 'Asia/Seoul';
-  const weeklyZone = weekly?.resetTimeZone ?? 'Asia/Seoul';
-  const zoneAbbreviation = (zone: string) => new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { timeZone: zone, timeZoneName: 'short' }).formatToParts(now).find((part) => part.type === 'timeZoneName')?.value ?? zone;
-  const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weeklyZone }).format(weeklyAt).toUpperCase() : '';
-  const riftTime = riftAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: riftZone }).format(riftAt) : '';
+  const dailyLocal = dailyAt ? formatLocalClock(dailyAt, language) : null;
+  const weeklyLocal = weeklyAt ? formatLocalClock(weeklyAt, language) : null;
+  const riftLocal = riftAt ? formatLocalClock(riftAt, language) : null;
   const clock = new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
   const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => {
     const progress = remainingFraction(target, start);
@@ -283,9 +282,9 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
 
   return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
     <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
-    {timer('daily', dailyLabel, `${daily?.resetTime ?? '16:00'} ${zoneAbbreviation(dailyZone)}`, dailyAt, dailyFrom)}
-    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'} ${zoneAbbreviation(weeklyZone)}`, weeklyAt, weeklyFrom)}
-    {timer('rift', 'Rift', riftTime || '—', riftAt, riftFrom)}
+    {timer('daily', dailyLabel, dailyLocal ? `${dailyLocal.time} ${dailyLocal.zone}` : '—', dailyAt, dailyFrom)}
+    {timer('weekly', weeklyLabel, weeklyLocal ? `${weeklyLocal.weekday} ${weeklyLocal.time} ${weeklyLocal.zone}` : '—', weeklyAt, weeklyFrom)}
+    {timer('rift', 'Rift', riftLocal ? `${riftLocal.time} ${riftLocal.zone}` : '—', riftAt, riftFrom)}
   </div>;
 }
 
