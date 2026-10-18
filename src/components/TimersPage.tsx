@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { AlarmClock, CalendarClock, Clock3, ExternalLink, Radio, ShieldAlert, Volume2, VolumeX } from 'lucide-react';
 import { globalSchedules, nextWeeklyGlobalReset } from '../lib/schedule';
-import { TIMER_ALERT_LEAD_MS } from '../lib/timerAlerts';
 import { gartuaFeedServers } from '../lib/gartuaFeed';
 import { NeoSelect } from './NeoSelect';
-import { serverZones, useTimers, timerCountdown as countdown } from './TimerProvider';
+import { useTimers, timerCountdown as countdown } from './TimerProvider';
+
+import { TimerAlertControls } from './TimerAlertControls';
 
 const weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 function scheduleDescription(schedule: (typeof globalSchedules)[number], t: TFunction): string {
@@ -17,12 +18,11 @@ function scheduleDescription(schedule: (typeof globalSchedules)[number], t: TFun
 
 export function TimersPage() {
   const { t, i18n } = useTranslation();
-  const { now, timeZone, soundAlerts, gartuaServer, gartuaFeedStatus, gartuaFeedUpdatedAt, entries, activeEntries, gartuaTimers, changeZone, changeGartuaServer, toggleSoundAlert } = useTimers();
-  const zoneOptions = serverZones.map(zone => ({ value: zone.value, label: t(zone.labelKey) }));
+  const { now, timeZone, soundAlerts, alertLeadMinutes, gartuaServer, gartuaFeedStatus, gartuaFeedUpdatedAt, entries, activeEntries, gartuaTimers, changeGartuaServer, toggleSoundAlert } = useTimers();
   const weeklyReset = useMemo(() => nextWeeklyGlobalReset(now), [now]);
   const weeklyResetLocal = new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'full', timeStyle: 'short' }).format(weeklyReset);
   return <>
-    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><label className="server-zone-picker"><span>{t('serverTimeZone')}</span><NeoSelect ariaLabel={t('serverTimeZone')} value={timeZone} onChange={(value) => changeZone(String(value))} options={zoneOptions} /></label></section>
+    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><TimerAlertControls /></section>
 
     <section className="weekly-reset-card">
       <div className="weekly-reset-art"><CalendarClock size={22} /></div>
@@ -46,7 +46,7 @@ export function TimersPage() {
             {gartuaFeedUpdatedAt && <small>{t('gartuaUpdated')}: {new Intl.DateTimeFormat(i18n.resolvedLanguage, { timeStyle: 'short', timeZone }).format(gartuaFeedUpdatedAt)}</small>}
             {!boss.status ? <small>{t('gartuaNoReport')}</small> : isAlive ? <small>{boss.aliveSince ? `${t('gartuaAliveSince')} ${new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'short', timeStyle: 'short', timeZone }).format(boss.aliveSince)}` : t('gartuaAlive')}{boss.status.est ? ` · ${t('gartuaEstimated')}` : ''}</small> : isDeadWithTimer ? <small>{estimateMark}{t('gartuaExpectedAt')}: {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'short', timeStyle: 'short', timeZone }).format(boss.spawnAt!)}{boss.status?.est ? ` · ${t('gartuaEstimated')}` : ''}</small> : <small>{t('gartuaNoReport')}</small>}
           </div>
-          <div className="schedule-right gartua-feed-right">{isDeadWithTimer && <><button type="button" className={`sound-alert-switch${soundAlerts[boss.id] ? ' is-enabled' : ''}`} role="switch" aria-checked={Boolean(soundAlerts[boss.id])} aria-label={t('soundAlertFor', { name: t(boss.nameKey), minutes: TIMER_ALERT_LEAD_MS / 60000 })} title={t('soundAlertTooltip', { minutes: TIMER_ALERT_LEAD_MS / 60000 })} onClick={() => toggleSoundAlert(boss.id)}>{soundAlerts[boss.id] ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}<span>{TIMER_ALERT_LEAD_MS / 60000} min</span></button><strong aria-label={`${t('timeRemaining')}: ${countdown(boss.spawnAt!, now)}`}>{countdown(boss.spawnAt!, now)}</strong><span className="schedule-live-caption">{boss.spawnAt!.getTime() <= now.getTime() ? t('gartuaWindowPassed') : t('gartuaRespawnsIn')}</span></>}</div>
+          <div className="schedule-right gartua-feed-right">{isDeadWithTimer && <><button type="button" className={`sound-alert-switch${soundAlerts[boss.id] ? ' is-enabled' : ''}`} role="switch" aria-checked={Boolean(soundAlerts[boss.id])} aria-label={t('soundAlertFor', { name: t(boss.nameKey), minutes: alertLeadMinutes })} title={t('soundAlertTooltip', { minutes: alertLeadMinutes })} onClick={() => toggleSoundAlert(boss.id)}>{soundAlerts[boss.id] ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}<span>{alertLeadMinutes} min</span></button><strong aria-label={`${t('timeRemaining')}: ${countdown(boss.spawnAt!, now)}`}>{countdown(boss.spawnAt!, now)}</strong><span className="schedule-live-caption">{boss.spawnAt!.getTime() <= now.getTime() ? t('gartuaWindowPassed') : t('gartuaRespawnsIn')}</span></>}</div>
         </article>;
       })}</div>}
       <p className="gartua-source-note">{t('gartuaSourceNote')} <a href="https://www.aion2timers.com/world-boss-timer/" target="_blank" rel="noreferrer">{t('gartuaReportSource')} <ExternalLink size={12} aria-hidden="true" /></a></p>
@@ -65,12 +65,12 @@ export function TimersPage() {
 
     <section className="timer-list-panel content-section">
       <div className="section-heading"><div><div className="eyebrow"><Clock3 size={13} />{t('communitySchedule')}</div><h2>{t('upcomingSchedules')}</h2></div><span className="filter-count">{entries.length} {t('globalService')}</span></div>
-      <p className="sound-alert-help">{t('soundAlertNotice', { minutes: TIMER_ALERT_LEAD_MS / 60000 })}</p>
+      <p className="sound-alert-help">{t('soundAlertNotice', { minutes: alertLeadMinutes })}</p>
       <div className="schedule-list">{entries.map(({ schedule, next }) => (
         <article className="schedule-card" key={schedule.id}>
           <div className={`schedule-glyph ${schedule.kind}`}><AlarmClock size={17} /></div>
           <div className="schedule-main"><div className="schedule-title"><h3>{schedule.name}</h3><span className={`schedule-kind ${schedule.kind}`}>{schedule.kind === 'boss' ? t('boss') : t('event')}</span></div><p>{scheduleDescription(schedule, t)} · {t('serverTime')}</p><small>{t('nextOccurrence')}: {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(next ?? now)}</small></div>
-          <div className="schedule-right"><button type="button" className={`sound-alert-switch${soundAlerts[schedule.id] ? ' is-enabled' : ''}`} role="switch" aria-checked={Boolean(soundAlerts[schedule.id])} aria-label={t('soundAlertFor', { name: schedule.name, minutes: TIMER_ALERT_LEAD_MS / 60000 })} title={t('soundAlertTooltip', { minutes: TIMER_ALERT_LEAD_MS / 60000 })} onClick={() => toggleSoundAlert(schedule.id)}>{soundAlerts[schedule.id] ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}<span>{TIMER_ALERT_LEAD_MS / 60000} min</span></button><strong aria-label={`${t('timeRemaining')}: ${next ? countdown(next, now) : '—'}`}>{next ? countdown(next, now) : '—'}</strong></div>
+          <div className="schedule-right"><button type="button" className={`sound-alert-switch${soundAlerts[schedule.id] ? ' is-enabled' : ''}`} role="switch" aria-checked={Boolean(soundAlerts[schedule.id])} aria-label={t('soundAlertFor', { name: schedule.name, minutes: alertLeadMinutes })} title={t('soundAlertTooltip', { minutes: alertLeadMinutes })} onClick={() => toggleSoundAlert(schedule.id)}>{soundAlerts[schedule.id] ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}<span>{alertLeadMinutes} min</span></button><strong aria-label={`${t('timeRemaining')}: ${next ? countdown(next, now) : '—'}`}>{next ? countdown(next, now) : '—'}</strong></div>
         </article>
       ))}</div>
     </section>

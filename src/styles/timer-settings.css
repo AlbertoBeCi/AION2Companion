@@ -1,0 +1,22 @@
+.timers-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.timer-alert-controls { display: flex; align-items: flex-end; gap: 12px; min-width: 0; max-width: 100%; }
+.timer-alert-controls > .icon-button { display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center; }
+.timer-alert-controls > .server-zone-picker { flex: 1; width: min(22rem, 100%); min-width: 0; }
+.timer-alert-controls .neo-select-trigger { min-height: 44px; }
+.alert-settings-form { display: grid; gap: 16px; min-width: 0; }
+.alert-settings-form > p { margin: 0; max-width: 65ch; color: var(--ink); }
+.alert-lead-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-right: 5px; }
+.alert-lead-presets .button { width: 100%; padding: 8px; }
+.alert-lead-presets [aria-pressed="true"] { background: var(--lime); color: var(--on-accent); }
+.alert-settings-form .button-primary { color: var(--on-accent); }
+.alert-settings-form .button-secondary { color: var(--ink); }
+.alert-settings-form .neo-select { width: 100%; }
+.alert-settings-form .alert-settings-error { padding: 12px; border: var(--border); border-radius: 8px; background: var(--yellow); color: var(--on-accent); }
+.alert-upload { position: relative; overflow: hidden; cursor: pointer; }
+.alert-upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.alert-upload:focus-within { outline: 3px solid var(--focus); outline-offset: 3px; }
+.alert-upload.is-busy { opacity: .7; cursor: wait; }
+@media (max-width: 1050px) {
+  .timers-hero { grid-template-columns: minmax(0, 1fr); }
+  .timer-alert-controls { justify-self: end; width: min(100%, 30rem); }
+}

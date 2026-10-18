@@ -1,11 +1,10 @@
 import { AlarmClock, BellOff, Clock3, Volume2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { TIMER_ALERT_LEAD_MS } from '../lib/timerAlerts';
 import { timerCountdown, useTimers } from './TimerProvider';
 
 export function AlarmTimersPanel({ onManage }: { onManage: () => void }) {
   const { t, i18n } = useTranslation();
-  const { now, soundAlerts, entries, activeEntries, gartuaTimers, gartuaServer, gartuaFeedStatus } = useTimers();
+  const { now, soundAlerts, alertLeadMinutes, entries, activeEntries, gartuaTimers, gartuaServer, gartuaFeedStatus } = useTimers();
   const rows = [
     ...entries.filter(entry => soundAlerts[entry.schedule.id]).map(({ schedule, next }) => {
       const active = activeEntries.find(entry => entry.schedule.id === schedule.id);
@@ -26,7 +25,7 @@ export function AlarmTimersPanel({ onManage }: { onManage: () => void }) {
       <button type="button" className="button button-secondary" onClick={onManage}>{t('manageTimerAlerts')}</button>
     </div>
     {rows.length ? <>
-      <p className="alarm-panel-note">{t('timerAlertLead', { minutes: TIMER_ALERT_LEAD_MS / 60000 })} · {t('communitySchedule')}</p>
+      <p className="alarm-panel-note">{t('timerAlertLead', { minutes: alertLeadMinutes })} · {t('communitySchedule')}</p>
       <div className="alarm-list">{rows.map(row => <article key={row.id} data-alarm-id={row.id} className={`alarm-timer${row.live ? ' is-live' : ''}`}>
         <div className="alarm-timer-copy"><h3><AlarmClock size={18} aria-hidden="true" />{row.name}</h3><p>{row.status}</p>{row.target && <time dateTime={row.target.toISOString()}>{row.estimated ? '≈ ' : ''}{new Intl.DateTimeFormat(i18n.resolvedLanguage, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(row.target)}</time>}</div>
         {row.target && <strong role="timer" aria-label={`${t('timeRemaining')}: ${timerCountdown(row.target, now)}`}>{timerCountdown(row.target, now)}</strong>}

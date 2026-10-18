@@ -45,6 +45,8 @@ export interface Preferences {
   compact: boolean;
   trackerSeedVersion?: number;
   trackerOrder?: { daily: string[]; weekly: string[] };
+  timerAlertAudio?: { name: string; dataUrl: string } | undefined;
+  progressOwnershipVersion?: number | undefined;
 }
 
 export interface ScheduledTimer {

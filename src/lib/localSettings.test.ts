@@ -17,6 +17,8 @@ describe('local app settings backup', () => {
       'aion2-timer-server-zone': 'Europe/Berlin',
       'aion2-gartua-server': 'invalid-server!/',
       'aion2-timer-sound-alerts': '{"spacetime-rift":true}',
+      'aion2-timer-alert-lead-minutes': '15',
+      'aion2-timer-alert-sound': 'completion',
       'unrelated-app-key': 'should not be restored',
     });
 
@@ -24,7 +26,15 @@ describe('local app settings backup', () => {
     expect(localStorage.getItem('aion2-timer-server-zone')).toBe('Europe/Berlin');
     expect(localStorage.getItem('aion2-gartua-server')).toBeNull();
     expect(localStorage.getItem('aion2-timer-sound-alerts')).toBe('{"spacetime-rift":true}');
+    expect(localStorage.getItem('aion2-timer-alert-lead-minutes')).toBe('15');
+    expect(localStorage.getItem('aion2-timer-alert-sound')).toBe('completion');
     expect(localStorage.getItem('unrelated-app-key')).toBeNull();
+  });
+
+  it('rejects invalid alert settings on import', () => {
+    importLocalSettings({ 'aion2-timer-alert-lead-minutes': '61', 'aion2-timer-alert-sound': 'https://invalid.example/audio.mp3' });
+    expect(localStorage.getItem('aion2-timer-alert-lead-minutes')).toBeNull();
+    expect(localStorage.getItem('aion2-timer-alert-sound')).toBeNull();
   });
 
   it('clears all app-owned settings while preserving keys owned by other code', () => {

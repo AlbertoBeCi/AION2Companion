@@ -35,19 +35,15 @@ describe('periodKey', () => {
 });
 
 describe('ownership and progress', () => {
-  it('keeps character, account, and region/server scopes separate', () => {
-    expect(ownerKey({ scope: 'character', region: 'global' }, 'char-1', 'A')).toBe('character:char-1');
-    expect(ownerKey({ scope: 'account', region: 'global' }, 'char-1', 'A')).toBe('account');
-    expect(ownerKey({ scope: 'server', region: 'global' }, 'char-1', 'A')).toBe('server:global:a');
-    expect(ownerKey({ scope: 'server', region: 'korea' }, 'char-1', 'A')).toBe('server:korea:a');
-    expect(ownerKey({ scope: 'server', region: 'unknown' }, 'char-1', 'A', 'global')).toBe('server:global:a');
-    expect(ownerKey({ scope: 'server', region: 'global' }, 'char-1', '')).toBe('local:default');
+  it('gives every character an independent owner regardless of activity scope or server', () => {
+    expect(ownerKey('char-1')).toBe('character:char-1');
+    expect(ownerKey('char-2')).toBe('character:char-2');
+    expect(ownerKey('char-1')).not.toBe(ownerKey('char-2'));
   });
 
-  it('uses the local profile when no character or server was configured', () => {
-    expect(ownerKey({ scope: 'character', region: 'global' }, null, null)).toBe('local:default');
-    expect(ownerKey({ scope: 'server', region: 'global' }, null, null)).toBe('local:default');
-    expect(ownerKey({ scope: 'character', region: 'global' }, 'char-1', null)).toBe('character:char-1');
+  it('keeps the local profile separate from every character', () => {
+    expect(ownerKey(null)).toBe('local:default');
+    expect(ownerKey(null)).not.toBe(ownerKey('char-1'));
   });
 
   it('clamps manual progress and returns a bounded percentage', () => {

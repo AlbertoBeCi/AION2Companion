@@ -1,7 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/database';
 import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence } from '../lib/schedule';
 import { fetchGartuaFeed, isSupportedGartuaServer, type GartuaFeed } from '../lib/gartuaFeed';
-import { isWithinTimerAlertWindow, playTimerAlert, preloadTimerAlertAudio } from '../lib/timerAlerts';
+import { isWithinTimerAlertWindow, playTimerAlert, preloadTimerAlertAudio, TIMER_ALERT_LEAD_KEY, TIMER_ALERT_SOUND_KEY, timerAlertSounds, validAlertLeadMinutes, type TimerAlertSound } from '../lib/timerAlerts';
 import { LOCAL_SETTINGS_CHANGED } from '../lib/localSettings';
 import { useUiStore } from '../stores/uiStore';
 
@@ -17,7 +19,7 @@ export const gartuaBosses = [
   { id: 'gartua-immortal', feedId: 'asmo24', nameKey: 'gartuaImmortal', zoneKey: 'gartuaImmortalZone' },
 ] as const;
 const soundAlertsStorageKey = 'aion2-timer-sound-alerts';
-const preferenceKeys = [soundAlertsStorageKey, 'aion2-timer-server-zone', 'aion2-gartua-server'];
+const preferenceKeys = [soundAlertsStorageKey, 'aion2-timer-server-zone', 'aion2-gartua-server', TIMER_ALERT_LEAD_KEY, TIMER_ALERT_SOUND_KEY];
 
 function stored(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -42,6 +44,14 @@ function readZone(): string {
   const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return serverZones.some(zone => zone.value === deviceZone) ? deviceZone : 'Europe/Berlin';
 }
+function readLeadMinutes(): number {
+  const value = Number(stored(TIMER_ALERT_LEAD_KEY));
+  return validAlertLeadMinutes(value) ? value : 5;
+}
+function readAlertSound(): TimerAlertSound {
+  const value = stored(TIMER_ALERT_SOUND_KEY);
+  return value === 'completion' || value === 'custom' ? value : 'default';
+}
 export function timerCountdown(target: Date, now: Date): string {
   const seconds = Math.max(0, Math.floor((target.getTime() - now.getTime()) / 1000));
   const days = Math.floor(seconds / 86400);
@@ -55,6 +65,10 @@ function useTimerEngine() {
   const [now, setNow] = useState(() => new Date());
   const [timeZone, setTimeZone] = useState(readZone);
   const [soundAlerts, setSoundAlerts] = useState(readSoundAlerts);
+  const [alertLeadMinutes, setAlertLeadMinutes] = useState(readLeadMinutes);
+  const [alertSound, setAlertSound] = useState(readAlertSound);
+  const customAudio = useLiveQuery(async () => (await db.preferences.get('main'))?.timerAlertAudio ?? null);
+  const alertSoundSource = alertSound === 'custom' ? customAudio?.dataUrl ?? timerAlertSounds.default : timerAlertSounds[alertSound];
   const [gartuaServer, setGartuaServer] = useState(readGartuaServer);
   const [gartuaFeed, setGartuaFeed] = useState<GartuaFeed | null>(null);
   const [gartuaFeedStatus, setGartuaFeedStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -73,6 +87,8 @@ function useTimerEngine() {
       setTimeZone(readZone());
       setSoundAlerts(readSoundAlerts());
       setGartuaServer(readGartuaServer());
+      setAlertLeadMinutes(readLeadMinutes());
+      setAlertSound(readAlertSound());
       firedAlerts.current.clear();
     };
     const onStorage = (event: StorageEvent) => { if (event.key === null || preferenceKeys.includes(event.key)) refresh(); };
@@ -130,23 +146,24 @@ function useTimerEngine() {
   }), [gartuaFeed]);
 
   useEffect(() => {
+    if (alertSound === 'custom' && customAudio === undefined) return;
     const candidates = [
       ...entries.map(({ schedule, next }) => ({ id: schedule.id, next })),
       ...gartuaTimers.filter(boss => boss.status?.st === 'dead' && gartuaFeedStatus === 'ready').map(boss => ({ id: boss.id, next: boss.spawnAt })),
     ];
     for (const { id, next } of candidates) {
-      if (!soundAlerts[id] || !next || !isWithinTimerAlertWindow(next, now)) continue;
+      if (!soundAlerts[id] || !next || !isWithinTimerAlertWindow(next, now, alertLeadMinutes * 60000)) continue;
       const firedKey = `aion2-timer-alert-fired:${id}`;
       const occurrence = String(next.getTime());
       const pendingKey = `${id}:${occurrence}`;
       if (stored(firedKey) === occurrence || firedAlerts.current.get(id) === occurrence || pendingAlerts.current.has(pendingKey)) continue;
       pendingAlerts.current.add(pendingKey);
-      void playTimerAlert().then(played => {
+      void playTimerAlert(alertSoundSource).then(played => {
         pendingAlerts.current.delete(pendingKey);
         if (played) { firedAlerts.current.set(id, occurrence); remember(firedKey, occurrence); }
       }, () => pendingAlerts.current.delete(pendingKey));
     }
-  }, [entries, gartuaTimers, gartuaFeedStatus, now, soundAlerts]);
+  }, [entries, gartuaTimers, gartuaFeedStatus, now, soundAlerts, alertLeadMinutes, alertSoundSource, alertSound, customAudio]);
 
   function changeZone(value: string) {
     if (!serverZones.some(zone => zone.value === value)) return;
@@ -160,12 +177,21 @@ function useTimerEngine() {
   }
   function toggleSoundAlert(id: string) {
     const enabled = !soundAlerts[id];
-    if (enabled) preloadTimerAlertAudio();
+    if (enabled) preloadTimerAlertAudio(alertSoundSource);
     const updated = { ...soundAlerts, [id]: enabled };
     setSoundAlerts(updated);
     remember(soundAlertsStorageKey, JSON.stringify(updated));
   }
-  return { now, timeZone, soundAlerts, gartuaServer, gartuaFeedStatus, gartuaFeedUpdatedAt, entries, activeEntries, gartuaTimers, changeZone, changeGartuaServer, toggleSoundAlert };
+  function changeAlertLeadMinutes(value: number) {
+    if (!validAlertLeadMinutes(value)) return;
+    setAlertLeadMinutes(value);
+    remember(TIMER_ALERT_LEAD_KEY, String(value));
+  }
+  function changeAlertSound(value: TimerAlertSound) {
+    setAlertSound(value);
+    remember(TIMER_ALERT_SOUND_KEY, value);
+  }
+  return { now, timeZone, soundAlerts, alertLeadMinutes, alertSound, alertSoundSource, customAudio, gartuaServer, gartuaFeedStatus, gartuaFeedUpdatedAt, entries, activeEntries, gartuaTimers, changeZone, changeGartuaServer, toggleSoundAlert, changeAlertLeadMinutes, changeAlertSound };
 }
 
 const TimerContext = createContext<ReturnType<typeof useTimerEngine> | null>(null);

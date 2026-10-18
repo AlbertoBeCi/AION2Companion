@@ -1,4 +1,4 @@
-import type { ResetFrequency, Tracker } from '../types/domain';
+import type { ResetFrequency } from '../types/domain';
 
 const datePart = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const timeParts = (time: string): [number, number] => {
@@ -79,13 +79,7 @@ export function nextReset(frequency: ResetFrequency, resetTime: string, resetWee
   return next;
 }
 
-export function ownerKey(tracker: Pick<Tracker, 'scope' | 'region'>, characterId: string | null, server: string | null, characterRegion?: Tracker['region']): string {
-  if (tracker.scope === 'account') return 'account';
-  if (tracker.scope === 'server') {
-    const region = characterRegion && characterRegion !== 'unknown' ? characterRegion : tracker.region;
-    if (server?.trim()) return `server:${region}:${server.trim().toLocaleLowerCase()}`;
-    return 'local:default';
-  }
+export function ownerKey(characterId: string | null): string {
   return characterId ? `character:${characterId}` : 'local:default';
 }
 

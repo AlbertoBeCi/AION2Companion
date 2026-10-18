@@ -180,15 +180,21 @@ input:focus-visible,textarea:focus-visible { outline: 3px solid var(--focus); ou
   color: var(--black);
   box-shadow: var(--shadow-md);
 }
-.tracker-wrap:nth-child(3n+1) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+1) { background: var(--yellow); }
-.tracker-wrap:nth-child(3n+2) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+2) { background: var(--turquoise); }
-.tracker-wrap:nth-child(3n) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n) { background: var(--cream); }
-.tracker-card h3,.tracker-desc,.tracker-meta span,.progress-label strong,.tracker-card-foot small,.source-copy h3,.source-copy p,.source-copy small,.schedule-main h3,.schedule-main p,.settings-title h2,.settings-title p,.setting-row b,.setting-row small { color: var(--black); }
-.tracker-wrap:nth-child(3n+1) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+1),.tracker-wrap:nth-child(3n+2) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+2),.tracker-card.is-complete { color: var(--on-accent); }
-.tracker-wrap:nth-child(3n+1) .tracker-card h3,.tracker-wrap:nth-child(3n+1) .tracker-desc,.tracker-wrap:nth-child(3n+1) .tracker-meta span,.tracker-wrap:nth-child(3n+2) .tracker-card h3,.tracker-wrap:nth-child(3n+2) .tracker-desc,.tracker-wrap:nth-child(3n+2) .tracker-meta span,.tracker-card.is-complete h3,.tracker-card.is-complete .tracker-desc,.tracker-card.is-complete .tracker-meta span { color: var(--on-accent); }
+.tracker-card {
+  --tracker-surface: var(--surface-2);
+  --tracker-foreground: var(--ink);
+  background: var(--tracker-surface);
+  color: var(--tracker-foreground);
+}
+.tracker-wrap:nth-child(3n+1) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+1) { --tracker-surface: var(--yellow); --tracker-foreground: var(--on-accent); }
+.tracker-wrap:nth-child(3n+2) .tracker-card,.tracker-grid>.tracker-card:nth-child(3n+2) { --tracker-surface: var(--turquoise); --tracker-foreground: var(--on-accent); }
+.tracker-card :is(h3,.tracker-desc,.progress-label,.progress-label strong,.progress-label strong span,.progress-label small,.tracker-card-foot small,.tracker-glyph) { color: var(--tracker-foreground); }
+.tracker-card .stepper button { color: var(--on-accent); }
+.source-copy h3,.source-copy p,.source-copy small,.schedule-main h3,.schedule-main p,.settings-title h2,.settings-title p,.setting-row b,.setting-row small { color: var(--black); }
 .progress-track { height: 12px; border: var(--neo-border); background: var(--white); }
 .progress-track span { background: var(--blue); }
-.tracker-card.is-complete,.character-card.chosen { border-color: var(--ink); background: var(--lime); box-shadow: var(--shadow-md); color: var(--on-accent); }
+.tracker-card.is-complete { border-color: var(--ink); box-shadow: var(--shadow-md); }
+.character-card.chosen { border-color: var(--ink); background: var(--lime); box-shadow: var(--shadow-md); color: var(--on-accent); }
 .checklist-tabs { gap: 8px; }
 .checklist-tabs button[aria-selected="true"],.filter-chip.selected { background: var(--lime); }
 .filter-chip { min-height: 44px; padding: 0 12px; }
@@ -299,16 +305,6 @@ input:focus-visible,textarea:focus-visible { outline: 3px solid var(--focus); ou
 .eyebrow { color: var(--link); }
 [data-theme="dark"] .eyebrow { color: var(--lime); }
 .neo-select-group-label { color: var(--link); }
-.tracker-wrap:nth-child(3n+1) .tracker-card *,
-.tracker-grid>.tracker-card:nth-child(3n+1) *,
-.tracker-wrap:nth-child(3n+2) .tracker-card *,
-.tracker-grid>.tracker-card:nth-child(3n+2) *,
-.tracker-card.is-complete * { color: var(--on-accent); }
-.tracker-wrap:nth-child(3n+1) .tracker-card .micro-action,
-.tracker-grid>.tracker-card:nth-child(3n+1) .micro-action,
-.tracker-wrap:nth-child(3n+2) .tracker-card .micro-action,
-.tracker-grid>.tracker-card:nth-child(3n+2) .micro-action,
-.tracker-card.is-complete .micro-action { color: var(--ink); }
 .tracker-wrap .tracker-card .tracker-meta .community-made { border-color: var(--ink); color: var(--on-accent); }
 .character-chip { color: var(--on-accent); }
 .character-chip * { color: inherit; }

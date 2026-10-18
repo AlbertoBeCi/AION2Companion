@@ -17,9 +17,9 @@
 ## ✨ Qué puedes hacer
 
 - ✅ Llevar contadores diarios y semanales y registrar el progreso a mano.
-- 👤 Usar un perfil local sin crear personajes ni seleccionar servidor.
+- 👤 Usar un perfil local o mantener el progreso separado por personaje, incluso en el mismo servidor.
 - ⏱️ Consultar horarios comunitarios de jefes y eventos, y la cuenta atrás semanal.
-- 🔔 Activar avisos de sonido solo para los temporizadores que elijas.
+- 🔔 Activar alarmas que funcionan desde cualquier sección, elegir la antelación (1–60 minutos) y cambiar el sonido o usar un audio propio.
 - 🌗 Cambiar idioma (ES/EN) y tema claro u oscuro.
 - 💾 Guardar los datos en este dispositivo, exportar una copia JSON e importarla después.
 - 📲 Instalar la versión publicada como PWA. Tras cargar sus recursos, el shell puede abrirse sin conexión; los feeds requieren internet.
@@ -98,9 +98,9 @@ Si te resulta útil, puedes [invitarme a un café en Ko-fi](https://ko-fi.com/S0
 ## ✨ What you can do
 
 - ✅ Track daily and weekly counters and record progress manually.
-- 👤 Use a local profile without creating characters or selecting a server.
+- 👤 Use a local profile or track each character independently, even on the same server.
 - ⏱️ View community schedules for bosses and events, plus the weekly countdown.
-- 🔔 Enable sound alerts only for the timers you choose.
+- 🔔 Enable alerts across every app page, choose the lead time (1–60 minutes), and select a sound or upload your own audio.
 - 🌗 Switch between Spanish and English and light or dark themes.
 - 💾 Keep data on this device, export a JSON backup, and import it later.
 - 📲 Install the production app as a PWA. After its resources load, the app shell can open offline; community feeds need internet access.

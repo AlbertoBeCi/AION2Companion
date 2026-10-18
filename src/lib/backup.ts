@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { db } from '../db/database';
 import type { BackupFile } from '../types/domain';
 import { clearLocalSettings, exportLocalSettings, importLocalSettings } from './localSettings';
+import { migrateCharacterProgress } from './characterProgress';
+import { customAlertAudioSchema } from './customAlertAudio';
 
 const characterSchema = z.object({ id: z.string().min(1), name: z.string().min(1).max(60), region: z.enum(['global', 'korea', 'taiwan', 'unknown']), server: z.string().max(60), className: z.string().max(40), createdAt: z.string() });
 const trackerSchema = z.object({
@@ -10,7 +12,7 @@ const trackerSchema = z.object({
   resetWeekday: z.number().int().min(0).max(6), resetTimeZone: z.string().optional(), region: z.enum(['global', 'korea', 'taiwan', 'unknown']), provenance: z.enum(['user-defined', 'official', 'community']), sourceId: z.string().nullable(), createdAt: z.string(), archived: z.boolean().optional(),
 });
 const progressSchema = z.object({ id: z.string().min(1), trackerId: z.string(), ownerKey: z.string(), periodKey: z.string(), value: z.number().int().min(0), updatedAt: z.string() });
-const preferencesSchema = z.object({ id: z.literal('main'), language: z.enum(['es', 'en']), theme: z.enum(['dark', 'light']), compact: z.boolean(), trackerSeedVersion: z.number().int().optional(), trackerOrder: z.object({ daily: z.array(z.string()), weekly: z.array(z.string()) }).optional() });
+const preferencesSchema = z.object({ id: z.literal('main'), language: z.enum(['es', 'en']), theme: z.enum(['dark', 'light']), compact: z.boolean(), trackerSeedVersion: z.number().int().optional(), trackerOrder: z.object({ daily: z.array(z.string()), weekly: z.array(z.string()) }).optional(), timerAlertAudio: customAlertAudioSchema.optional(), progressOwnershipVersion: z.number().int().min(0).max(1).optional() });
 const scheduledTimerSchema = z.object({ id: z.string().min(1).max(100), name: z.string().min(1).max(80), kind: z.enum(['boss', 'event']), days: z.array(z.number().int().min(0).max(6)).max(7), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), region: z.enum(['global', 'korea', 'taiwan', 'unknown']), createdAt: z.string() });
 const weeklyResetSchema = z.object({ id: z.literal('weekly-reset'), weekday: z.number().int().min(0).max(6), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), region: z.enum(['global', 'korea', 'taiwan', 'unknown']) });
 const localSettingsSchema = z.record(z.string().max(120), z.string().max(2048)).optional().default({});
@@ -42,6 +44,7 @@ export async function importBackup(file: File, mode: 'merge' | 'replace'): Promi
       (() => { const { trackerOrder, ...preferences } = backup.preferences; return db.preferences.put({ ...preferences, ...(trackerOrder ? { trackerOrder } : {}), trackerSeedVersion: 1 }); })(),
     ]);
   });
+  await migrateCharacterProgress();
   if (mode === 'replace') clearLocalSettings();
   importLocalSettings(backup.localSettings);
 }

@@ -10,6 +10,7 @@ import './styles/pwa.css';
 import './styles/modern-neo.css';
 import './styles/header.css';
 import './styles/alarms.css';
+import './styles/timer-settings.css';
 import { ensurePreferences } from './db/database';
 import { TimerProvider } from './components/TimerProvider';
 

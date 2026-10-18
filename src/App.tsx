@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Coffee, Download, ExternalLink, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Coffee, Download, ExternalLink, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { db, ensurePreferences } from './db/database';
+import { migrateCharacterProgress } from './lib/characterProgress';
 import { clampProgress, nextReset, ownerKey, periodKey, progressPercent } from './lib/rules';
 import { characterInputSchema, trackerInputSchema } from './lib/validation';
 import { exportBackup, importBackup } from './lib/backup';
@@ -12,6 +13,7 @@ import { sourceRecords } from './lib/sources';
 import { useUiStore, type Page } from './stores/uiStore';
 import type { Character, Preferences, ProgressEntry, Tracker, TrackerScope, ResetFrequency, Region } from './types/domain';
 import { PwaPrompt } from './components/PwaPrompt';
+import { Modal } from './components/Modal';
 import { TimersPage } from './components/TimersPage';
 import { AlarmTimersPanel } from './components/AlarmTimersPanel';
 import { CONQUEST_TRACKER_ID, seedGlobalChecklists } from './lib/checklists';
@@ -94,7 +96,7 @@ function App() {
     try { savedTheme = localStorage.getItem(themeStorageKey); } catch { /* Use the system preference when storage is unavailable. */ }
     const theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : initialTheme();
     applyTheme(theme, savedTheme === 'dark' || savedTheme === 'light');
-    if (preferences.theme !== theme) void db.preferences.put({ ...preferences, theme });
+    if (preferences.theme !== theme) void db.preferences.update('main', { theme });
     document.documentElement.lang = preferences.language;
     if (i18n.language !== preferences.language) void i18n.changeLanguage(preferences.language);
   }, [preferences.language, preferences.theme]);
@@ -103,22 +105,24 @@ function App() {
     document.title = `${t(pageTitleKey[page])} · AION2Companion`;
   }, [page, preferences.language, t]);
 
-  useEffect(() => { void seedGlobalChecklists(); }, []);
+  useEffect(() => { void seedGlobalChecklists().then(() => migrateCharacterProgress()); }, []);
 
   async function savePreferences(patch: Partial<Preferences>) {
     if (patch.theme) applyTheme(patch.theme);
-    const current = await ensurePreferences();
-    await db.preferences.put({ ...current, ...patch });
+    await ensurePreferences();
+    await db.preferences.update('main', patch);
   }
 
   async function changeProgress(tracker: Tracker, delta: number) {
     const selectedCharacter = active;
-    const owner = ownerKey(tracker, selectedCharacter?.id ?? null, selectedCharacter?.server ?? null, selectedCharacter?.region);
+    const owner = ownerKey(selectedCharacter?.id ?? null);
     const period = periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
     const entryId = `${tracker.id}|${owner}|${period}`;
-    const current = await db.progress.get(entryId);
-    const value = clampProgress((current?.value ?? 0) + delta, tracker.limit);
-    await db.progress.put({ id: entryId, trackerId: tracker.id, ownerKey: owner, periodKey: period, value, updatedAt: new Date().toISOString() });
+    await db.transaction('rw', db.progress, async () => {
+      const current = await db.progress.get(entryId);
+      const value = clampProgress((current?.value ?? 0) + delta, tracker.limit);
+      await db.progress.put({ id: entryId, trackerId: tracker.id, ownerKey: owner, periodKey: period, value, updatedAt: new Date().toISOString() });
+    });
   }
 
   async function deleteCharacter(character: Character) {
@@ -228,7 +232,7 @@ function App() {
       </div>
     </header>
     <main className="main-area" id="main-content" tabIndex={-1}>
-      <div className="page-wrap"><AnimatePresence mode="wait"><motion.div id="page-content" key={page} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onAnimationComplete={() => { if (previousPage.current !== page) { document.querySelector<HTMLElement>('#page-content h1')?.focus(); previousPage.current = page; } }}>{pageContent}</motion.div></AnimatePresence></div>
+      <div className="page-wrap"><AnimatePresence mode="wait"><motion.div id="page-content" key={page} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onAnimationComplete={() => { if (previousPage.current !== page) { if (!document.querySelector('[aria-modal="true"]')) document.querySelector<HTMLElement>('#page-content h1')?.focus(); previousPage.current = page; } }}>{pageContent}</motion.div></AnimatePresence></div>
     </main>
     <nav className="mobile-nav" aria-label={t('mainNavigation')}>{mainPages.map((item) => { const Icon = pageIcon[item]; return <button type="button" key={item} aria-current={page === item ? 'page' : undefined} aria-label={t(pageTitleKey[item])} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><small>{t(pageTitleKey[item])}</small></button>; })}{creatorSupportUrl && <a className="mobile-support-link" href={creatorSupportUrl} target="_blank" rel="noopener noreferrer" aria-label={t('supportCreator')}><Coffee size={17} strokeWidth={2.5} aria-hidden="true" /><small>Ko-fi</small></a>}</nav>
     <footer className="app-footer"><span className="footer-brand">AION2COMPANION</span><nav aria-label={t('legalNavigation')}><a href="#privacy" aria-current={page === 'privacy' ? 'page' : undefined}>{t('privacyPolicy')}</a><a href="#fan-notice" aria-current={page === 'fan-notice' ? 'page' : undefined}>{t('fanNotice')}</a><a href="#about" aria-current={page === 'about' ? 'page' : undefined}>{t('aboutContact')}</a>{creatorSupportUrl && <a href={creatorSupportUrl} target="_blank" rel="noopener noreferrer"><Coffee size={15} aria-hidden="true" />{t('supportCreator')}<ExternalLink size={12} aria-hidden="true" /></a>}</nav><small>{t('footerFanNotice')}</small></footer>
@@ -429,7 +433,7 @@ function EmptyCard({ icon, title, body, action, onClick }: { icon: React.ReactNo
 }
 
 function currentValue(tracker: Tracker, active: Character | null, entries: ProgressEntry[]): number {
-  const key = ownerKey(tracker, active?.id ?? null, active?.server ?? null, active?.region);
+  const key = ownerKey(active?.id ?? null);
   if (!key) return 0;
   const period = periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
   return entries.find((entry) => entry.trackerId === tracker.id && entry.ownerKey === key && entry.periodKey === period)?.value ?? 0;
@@ -445,7 +449,7 @@ function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: 
   const percent = progressPercent(value, tracker.limit);
   const isComplete = value >= tracker.limit;
   const due = nextReset(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
-  const ownerLabel = tracker.scope === 'account' ? t('scopeAccount') : tracker.scope === 'server' && active?.server ? `${t('scopeServer')} · ${active.server}` : active ? tracker.scope === 'server' ? `${t('scopeServer')} · ${t('localProfile')}` : active.name : t('localProfile');
+  const ownerLabel = active?.name ?? t('localProfile');
   useEffect(() => {
     if (!celebration) return;
     const timeout = window.setTimeout(() => setCelebration(0), 1550);
@@ -518,6 +522,7 @@ function TrackersPage({ trackers, characters, progress, active, onProgress, onAd
     <p className="checklist-summary" role="status">{sectionDone}/{sectionTrackers.length} {t('trackersCompleted')}</p>
     <div id={`trackers-panel-${section}`} role="tabpanel" aria-labelledby={`trackers-tab-${section}`} tabIndex={0}>
       <h2 className="sr-only">{sections.find((item) => item.id === section)?.title ?? t('dailySection')}</h2>
+      <p className="checklist-summary">{t('progressPerCharacter')}</p>
       <div className="filters-row" role="group" aria-label={t('filterCategory')}><span className="filter-label">{t('filterCategory')}</span><button type="button" aria-pressed={category === 'all'} className={`filter-chip ${category === 'all' ? 'selected' : ''}`} onClick={() => setCategory('all')}>{t('all')}</button>{categories.map((item) => <button type="button" key={item} aria-pressed={category === item} className={`filter-chip ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)}>{trackerCopy(sectionTrackers.find((tracker) => tracker.category === item)!, language).category}</button>)}<span className="filter-count" aria-live="polite">{filtered.length} / {sectionTrackers.length}</span></div>
       {filtered.length ? section === 'archived' ? <div className="tracker-grid">{filtered.map((tracker) => { const copy = trackerCopy(tracker, language); return <article className="tracker-card archived-tracker" key={tracker.id}><span className="scope-badge">{t('archived')}</span><h3>{copy.name}</h3><p className="tracker-desc">{copy.description}</p><div className="tracker-actions"><button type="button" onClick={() => { void db.trackers.put({ ...tracker, archived: false }); }}>{t('restore')}</button><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text icon-only" aria-label={`${t('delete')} ${copy.name}`} title={t('delete')} onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" /></button></div></article>; })}</div> : <div className="tracker-grid">{filtered.map((tracker) => <div className="tracker-wrap" key={tracker.id}><TrackerCard tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} /><div className="tracker-actions"><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text icon-only" aria-label={`${t('delete')} ${trackerCopy(tracker, language).name}`} title={t('delete')} onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" /></button></div></div>)}</div> : <EmptyCard icon={<Gauge size={21} />} title={t('noTrackers')} body={section === 'none' ? t('noUnresetTrackers') : t('noTrackersDesc')} action={t('addTracker')} onClick={onAdd} />}
     </div>
@@ -613,31 +618,6 @@ function TrackerDialog({ initial, onClose, onSaved }: { initial: Tracker | null;
   </form></Modal>;
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  const t = useLocale();
-  const modalRef = useRef<HTMLElement | null>(null);
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = modalRef.current;
-    const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])].filter((item) => item.getAttribute('aria-hidden') !== 'true' && item.offsetParent !== null);
-    if (dialog && !dialog.contains(document.activeElement)) (focusable()[0] ?? dialog).focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { closeRef.current(); return; }
-      if (event.key !== 'Tab' || !dialog) return;
-      const items = focusable();
-      if (!items.length) { event.preventDefault(); dialog.focus(); return; }
-      const first = items[0]!;
-      const last = items.at(-1)!;
-      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('keydown', onKey); previousFocus?.focus(); };
-  }, []);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><motion.section ref={modalRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="modal-head"><div><div className="eyebrow">AION2Companion</div><h2 id="modal-title">{title}</h2></div><button type="button" className="icon-button" aria-label={t('close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div>{children}</motion.section></div>;
-}
 
 function regionName(region: Region, t: ReturnType<typeof useLocale>): string { return t(region); }
 

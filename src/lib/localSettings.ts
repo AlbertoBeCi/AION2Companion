@@ -3,6 +3,8 @@ const APP_LOCAL_KEYS = new Set([
   'aion2-timer-server-zone',
   'aion2-gartua-server',
   'aion2-timer-sound-alerts',
+  'aion2-timer-alert-lead-minutes',
+  'aion2-timer-alert-sound',
 ]);
 export const LOCAL_SETTINGS_CHANGED = 'aion2-local-settings-changed';
 
@@ -28,6 +30,8 @@ export function exportLocalSettings(): Record<string, string> {
 function isValidLocalSetting(key: string, value: string): boolean {
   if (value.length > 2048) return false;
   if (key === 'aion2-theme') return value === 'dark' || value === 'light';
+  if (key === 'aion2-timer-alert-lead-minutes') return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 60;
+  if (key === 'aion2-timer-alert-sound') return ['default', 'completion', 'custom'].includes(value);
   if (key === 'aion2-timer-server-zone') {
     return ['Europe/Berlin', 'America/New_York', 'America/Los_Angeles', 'America/Sao_Paulo', 'Asia/Seoul'].includes(value);
   }
