@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, ChevronDown, Clock3, Download, Flame, Gauge, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, ChevronDown, Clock3, Download, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { db, ensurePreferences } from './db/database';
@@ -143,7 +143,7 @@ function App() {
   }
 
   const pageContent = page === 'dashboard'
-    ? <Dashboard trackers={trackers} characters={characters} progress={progress} active={active} onProgress={changeProgress} onAddTracker={() => openTracker()} onNavigate={setPage} onSelectCharacter={setActiveCharacter} onEditTracker={openTracker} onDeleteTracker={deleteTracker} />
+    ? <Dashboard trackers={trackers} characters={characters} progress={progress} active={active} trackerOrder={preferences.trackerOrder} savePreferences={savePreferences} onProgress={changeProgress} onAddTracker={() => openTracker()} onNavigate={setPage} onSelectCharacter={setActiveCharacter} onEditTracker={openTracker} onDeleteTracker={deleteTracker} />
     : page === 'trackers'
       ? <TrackersPage trackers={trackers} characters={characters} progress={progress} active={active} onProgress={changeProgress} onAdd={() => openTracker()} onEdit={openTracker} onDelete={deleteTracker} />
       : page === 'timers'
@@ -235,13 +235,21 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
 
 interface DashboardProps {
   trackers: Tracker[]; characters: Character[]; progress: ProgressEntry[]; active: Character | null;
+  trackerOrder?: Preferences['trackerOrder']; savePreferences: (patch: Partial<Preferences>) => Promise<void>;
   onProgress: (tracker: Tracker, delta: number) => void; onAddTracker: () => void; onNavigate: (page: Page) => void;
   onSelectCharacter: (id: string) => void; onEditTracker: (tracker: Tracker) => void; onDeleteTracker: (tracker: Tracker) => void;
 }
-function Dashboard({ trackers, characters, progress, active, onProgress, onAddTracker, onNavigate, onSelectCharacter, onEditTracker, onDeleteTracker }: DashboardProps) {
+function Dashboard({ trackers, characters, progress, active, trackerOrder, savePreferences, onProgress, onAddTracker, onNavigate, onSelectCharacter, onEditTracker, onDeleteTracker }: DashboardProps) {
   const t = useLocale();
-  const daily = trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'daily');
-  const weekly = trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'weekly');
+  const sortByPreference = (items: Tracker[], order: string[] = []) => {
+    const positions = new Map(order.map((trackerId, index) => [trackerId, index]));
+    return [...items].sort((a, b) => (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+  };
+  const daily = sortByPreference(trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'daily'), trackerOrder?.daily);
+  const weekly = sortByPreference(trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'weekly'), trackerOrder?.weekly);
+  const reorder = (frequency: 'daily' | 'weekly', ids: string[]) => {
+    void savePreferences({ trackerOrder: { daily: trackerOrder?.daily ?? daily.map((tracker) => tracker.id), weekly: trackerOrder?.weekly ?? weekly.map((tracker) => tracker.id), [frequency]: ids } });
+  };
   const timed = [...daily, ...weekly];
   const done = timed.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
   const remaining = timed.length - done;
@@ -270,8 +278,8 @@ function Dashboard({ trackers, characters, progress, active, onProgress, onAddTr
     </section>
 
     <section className="companion-lists" aria-label={t('recordProgress')}>
-      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Daily' : 'Diarias'} records={daily} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
-      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Weekly' : 'Semanales'} records={weekly} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Daily' : 'Diarias'} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Weekly' : 'Semanales'} records={weekly} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('weekly', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
     </section>
   </div>;
 }
@@ -294,20 +302,40 @@ function ProgressSummary({ label, value, total, characters, active, progress, tr
   return <div className="overview-progress-row"><div className="overview-progress-top"><b>{label}</b><strong>{value}/{total}</strong></div><div className="overview-progress-track"><span style={{ width: `${pct}%` }} /></div><div className="overview-progress-legend"><span><i className="legend-main" />{active?.name ?? 'MAIN'} <b>{pct}%</b></span><span><i className="legend-alt" />Alts <b>{altPercent}</b></span><span><i className="legend-account" />Cuenta <b>{accountPercent}</b></span></div></div>;
 }
 
-function ChecklistPanel({ title, records, active, progress, onProgress, onAdd, onEdit, onDelete, resetText, emptyText }: { title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
+function ChecklistPanel({ title, records, active, progress, onProgress, onReorder, onAdd, onEdit, onDelete, resetText, emptyText }: { title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onReorder: (ids: string[]) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
   const t = useLocale();
   const [category, setCategory] = useState('all');
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [reorderAnnouncement, setReorderAnnouncement] = useState('');
   const completed = records.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
   const filtered = category === 'all' ? records : records.filter((tracker) => tracker.category === category);
   const label = title === 'Diarias' || title === 'Daily' ? 'daily' : 'weekly';
+  const move = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const ids = records.map((tracker) => tracker.id);
+    const from = ids.indexOf(fromId);
+    const to = ids.indexOf(toId);
+    if (from < 0 || to < 0) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, fromId);
+    onReorder(ids);
+    const moved = records.find((tracker) => tracker.id === fromId);
+    if (moved) setReorderAnnouncement(t('movedToPosition', { name: moved.id === CONQUEST_TRACKER_ID ? t('conquest') : moved.name, position: to + 1, total: records.length }));
+  };
+  const moveBy = (trackerId: string, delta: number) => {
+    const index = records.findIndex((tracker) => tracker.id === trackerId);
+    const target = records[index + delta];
+    if (target) move(trackerId, target.id);
+  };
   return <section className="checklist-panel">
     <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><select aria-label={t('filterCategory')} value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">{t('all')}</option>{[...new Set(records.map((tracker) => tracker.category))].map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
-    <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
+    <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
+    <span className="visually-hidden" aria-live="polite" aria-atomic="true">{reorderAnnouncement}</span>
     <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{i18n.resolvedLanguage?.startsWith('en') ? `Add ${label}` : `Añadir ${label === 'daily' ? 'diaria' : 'semanal'}`}</button>
   </section>;
 }
 
-function TrackerRow({ tracker, value, active, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
+function TrackerRow({ tracker, value, dragging, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; dragging: boolean; onDragStart: () => void; onDragEnd: () => void; onDrop: () => void; onMove: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
   const t = useLocale();
   const [celebration, setCelebration] = useState(false);
   const complete = value >= tracker.limit;
@@ -323,10 +351,11 @@ function TrackerRow({ tracker, value, active, onProgress, onEdit, onDelete }: { 
     await onProgress(tracker, delta);
     if (completes) setCelebration(true);
   }
-  return <article className={`companion-row${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}`}>
+  return <article className={`companion-row${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}${dragging ? ' is-dragging' : ''}`} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tracker.id); onDragStart(); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); onDrop(); }} onDragEnd={onDragEnd}>
     {celebration && <div className="tracker-celebration" aria-hidden="true">{fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}{confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}</div>}
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
-    <div className="row-copy"><div className="row-title-line"><h3>{name}</h3><span className="row-tag">{tracker.frequency === 'daily' ? t('dailyReset') : tracker.frequency === 'weekly' ? t('weeklyReset') : t('noReset')}</span><span className="row-category">{tracker.category}</span></div><div className="row-description">{tracker.description || t('noDescription')}</div><span className="row-scope">{tracker.scope === 'account' ? t('scopeAccount') : tracker.scope === 'server' ? t('scopeServer') : active?.name ?? t('localProfile')}</span></div>
+    <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove(1); } }}><GripVertical size={15} aria-hidden="true" /></button>
+    <div className="row-copy"><div className="row-title-line"><h3 title={name}>{name}</h3></div></div>
     <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={17} aria-hidden="true" /></button></div>
     <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
   </article>;

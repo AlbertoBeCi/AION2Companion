@@ -53,3 +53,31 @@ test('summary plus button increments a mission by one', async ({ page }) => {
   await conquest.getByRole('button', { name: 'Aumentar progreso Conquista' }).click();
   await expect(conquest.locator('.row-progress>b')).toHaveText('1/2');
 });
+
+test('summary trackers show only their names and keep a custom order after reload', async ({ page }) => {
+  await page.goto('/');
+  const rows = page.locator('.companion-row');
+  const first = rows.nth(0);
+  await expect(first.locator('.row-title-line')).toHaveText('Conquista');
+  await expect(first.locator('.row-description, .row-scope, .row-tag, .row-category')).toHaveCount(0);
+
+  await first.locator('.row-drag-handle').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(0).locator('.row-title-line')).toHaveText('Nightmare');
+  await page.reload();
+  await expect(page.locator('.companion-row').nth(0).locator('.row-title-line')).toHaveText('Nightmare');
+});
+
+test('header countdowns sit between the brand and the local profile selector', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('/');
+  const positions = await page.evaluate(() => {
+    const bounds = (selector: string) => {
+      const { left, right } = document.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+      return { left, right };
+    };
+    return { brand: bounds('.brand'), timers: bounds('.reset-ticker'), profile: bounds('.character-select') };
+  });
+  expect(positions.timers.left).toBeGreaterThanOrEqual(positions.brand.right);
+  expect(positions.timers.right).toBeLessThanOrEqual(positions.profile.left);
+});

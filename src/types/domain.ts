@@ -44,6 +44,7 @@ export interface Preferences {
   theme: 'dark' | 'light';
   compact: boolean;
   trackerSeedVersion?: number;
+  trackerOrder?: { daily: string[]; weekly: string[] };
 }
 
 export interface ScheduledTimer {
