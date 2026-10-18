@@ -260,7 +260,7 @@ input:focus-visible,textarea:focus-visible { outline: 3px solid var(--focus); ou
 .schedule-card.is-live .schedule-right>strong { color: var(--black); }
 .schedule-card.is-live { background: var(--turquoise); color: var(--on-accent); }
 .sound-alert-switch { min-height: 44px; border: var(--neo-border); border-radius: 7px; background: var(--white); color: var(--black); box-shadow: var(--shadow-sm); }
-.sound-alert-switch.is-enabled { background: var(--lime); }
+.sound-alert-switch.is-enabled { background: var(--lime); color: var(--on-accent); }
 .source-item:nth-child(3n+1) { background: var(--cream); }
 .source-item:nth-child(3n+2) { background: var(--turquoise); }
 .source-item:nth-child(3n) { background: var(--surface); }
