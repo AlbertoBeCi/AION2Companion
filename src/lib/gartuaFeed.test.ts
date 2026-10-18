@@ -17,14 +17,14 @@ describe('Gartua community feed', () => {
       now: 1_797_000_000,
       kills: {
         elyos24: { st: 'dead', ns: 1_797_043_200, est: true },
-        asmo24: { st: 'up', us: 1_796_900_000 },
+        asmo24: { st: 'up', us: 1_796_900_000, est: 1 },
         elyos01: { st: 'dead', ns: 1_797_043_200 },
       },
     })).toEqual({
       now: 1_797_000_000,
       kills: {
         elyos24: { st: 'dead', ns: 1_797_043_200, est: true },
-        asmo24: { st: 'up', us: 1_796_900_000 },
+        asmo24: { st: 'up', us: 1_796_900_000, est: true },
       },
     });
   });

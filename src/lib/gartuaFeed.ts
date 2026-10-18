@@ -31,7 +31,7 @@ function parseBossEntry(value: unknown): GartuaFeedEntry | undefined {
   for (const key of ['us', 'mu', 'ns'] as const) {
     if (typeof value[key] === 'number' && Number.isFinite(value[key]) && value[key] > 0) entry[key] = value[key];
   }
-  if (typeof value.est === 'boolean') entry.est = value.est;
+  if (typeof value.est === 'boolean' || value.est === 1) entry.est = value.est === true || value.est === 1;
   return Object.keys(entry).length ? entry : undefined;
 }
 
