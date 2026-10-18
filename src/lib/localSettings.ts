@@ -4,6 +4,7 @@ const APP_LOCAL_KEYS = new Set([
   'aion2-gartua-server',
   'aion2-timer-sound-alerts',
 ]);
+export const LOCAL_SETTINGS_CHANGED = 'aion2-local-settings-changed';
 
 function isAppLocalKey(key: string): boolean {
   return APP_LOCAL_KEYS.has(key) || /^aion2-timer-alert-fired:[a-z0-9-]+$/i.test(key);
@@ -49,10 +50,11 @@ export function importLocalSettings(settings: Record<string, string>): void {
       try {
         localStorage.setItem(key, value);
       } catch {
-        return;
+        break;
       }
     }
   }
+  window.dispatchEvent(new Event(LOCAL_SETTINGS_CHANGED));
 }
 
 export function clearLocalSettings(): void {
@@ -64,4 +66,5 @@ export function clearLocalSettings(): void {
   } catch {
     // If local storage is disabled, there is no app localStorage data to remove.
   }
+  window.dispatchEvent(new Event(LOCAL_SETTINGS_CHANGED));
 }

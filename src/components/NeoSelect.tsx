@@ -70,13 +70,14 @@ export function NeoSelect({ value, options, onChange, ariaLabel, id, name, class
       const rect = trigger.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom - 12;
       const spaceAbove = rect.top - 12;
+      const menuWidth = Math.min(window.innerWidth - 16, Math.max(rect.width, 12 * parseFloat(getComputedStyle(document.documentElement).fontSize)));
       const maxHeight = Math.max(120, Math.min(300, Math.max(spaceBelow, spaceAbove)));
       const placeAbove = spaceBelow < Math.min(220, maxHeight) && spaceAbove > spaceBelow;
       setListStyle({
         position: 'fixed',
         top: placeAbove ? Math.max(8, rect.top - maxHeight - 8) : rect.bottom + 8,
-        left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
-        width: rect.width,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8)),
+        width: menuWidth,
         maxHeight,
       });
     };
@@ -145,6 +146,7 @@ export function NeoSelect({ value, options, onChange, ariaLabel, id, name, class
       type="button"
       className="neo-select-trigger"
       aria-label={ariaLabel}
+      title={selected?.label}
       aria-haspopup="listbox"
       aria-expanded={open}
       aria-controls={open ? listId : undefined}

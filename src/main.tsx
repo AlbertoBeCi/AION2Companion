@@ -8,13 +8,16 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/pwa.css';
 import './styles/modern-neo.css';
+import './styles/header.css';
+import './styles/alarms.css';
 import { ensurePreferences } from './db/database';
+import { TimerProvider } from './components/TimerProvider';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 60_000, refetchOnWindowFocus: false } } });
 void ensurePreferences();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}><App /></QueryClientProvider>
+    <QueryClientProvider client={queryClient}><TimerProvider><App /></TimerProvider></QueryClientProvider>
   </React.StrictMode>,
 );

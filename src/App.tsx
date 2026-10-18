@@ -13,6 +13,7 @@ import { useUiStore, type Page } from './stores/uiStore';
 import type { Character, Preferences, ProgressEntry, Tracker, TrackerScope, ResetFrequency, Region } from './types/domain';
 import { PwaPrompt } from './components/PwaPrompt';
 import { TimersPage } from './components/TimersPage';
+import { AlarmTimersPanel } from './components/AlarmTimersPanel';
 import { CONQUEST_TRACKER_ID, seedGlobalChecklists } from './lib/checklists';
 import { globalSchedules, nextScheduleOccurrence } from './lib/schedule';
 import { playCelebrationSound } from './lib/timerAlerts';
@@ -279,7 +280,9 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => {
     const progress = remainingFraction(target, start);
     const circumference = 2 * Math.PI * 12;
-    return <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" aria-hidden="true"><svg viewBox="0 0 32 32"><circle className="header-timer-track" cx="16" cy="16" r="12" /><circle className="header-timer-progress" cx="16" cy="16" r="12" style={{ strokeDashoffset: circumference * (1 - progress) }} /></svg></span><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
+    const remaining = countdown(target);
+    const [days, value] = remaining.includes(' ') ? remaining.split(' ') : ['', remaining];
+    return <div className={`header-timer ${kind}`} key={kind} title={`${label} · ${time}`}><span className="header-timer-ring" aria-hidden="true"><svg viewBox="0 0 32 32"><circle className="header-timer-track" cx="16" cy="16" r="12" /><circle className="header-timer-progress" cx="16" cy="16" r="12" style={{ strokeDashoffset: circumference * (1 - progress) }} /></svg></span><span className="header-timer-copy"><small><span className="header-timer-name">{label}</span><span className="header-timer-schedule"> · {time}</span></small><b>{days && <><span className="header-timer-days">{days}</span>{' '}</>}<span className="header-timer-value">{value}</span></b></span></div>;
   };
 
   return <div className="reset-ticker" role="group" aria-label={t('clockAndTimers')}>
@@ -314,9 +317,7 @@ function Dashboard({ trackers, characters, progress, active, trackerOrder, saveP
   const weeklyDone = weekly.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
   const percent = timed.length ? Math.round(done / timed.length * 100) : 0;
   const dailyReset = nextReset('daily', daily[0]?.resetTime ?? '16:00', daily[0]?.resetWeekday ?? 3, new Date(), daily[0]?.resetTimeZone ?? 'Asia/Seoul');
-  const weeklyReset = nextReset('weekly', weekly[0]?.resetTime ?? '16:00', weekly[0]?.resetWeekday ?? 3, new Date(), weekly[0]?.resetTimeZone ?? 'Asia/Seoul');
   const resetCountdown = shortCountdown(dailyReset);
-  const weeklyCountdown = shortCountdown(weeklyReset);
   const perScope = (person: Character | null, items: Tracker[]) => {
     const complete = items.filter((tracker) => currentValue(tracker, person, progress) >= tracker.limit).length;
     return items.length ? Math.round(complete / items.length * 100) : 0;
@@ -337,7 +338,7 @@ function Dashboard({ trackers, characters, progress, active, trackerOrder, saveP
 
     <section className="companion-lists" aria-label={t('recordProgress')}>
       <ChecklistPanel title={t('dailySection')} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
-      <ChecklistPanel title={t('weeklySection')} records={weekly} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('weekly', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
+      <AlarmTimersPanel onManage={() => onNavigate('timers')} />
     </section>
   </div>;
 }

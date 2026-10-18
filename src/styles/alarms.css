@@ -1,0 +1,22 @@
+.alarm-panel { min-width: 0; padding: 14px; border: var(--border-heavy); border-radius: 10px; background: var(--sec-purple); color: var(--on-section-dark); box-shadow: var(--shadow-md); }
+.alarm-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: var(--border); }
+.alarm-panel-head>div { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.alarm-panel-head h2 { display: flex; min-width: 0; align-items: center; gap: 8px; margin: 0; color: inherit; font-size: var(--fs-xl); }
+.alarm-panel-head h2 svg { flex: none; }
+.alarm-panel-head .button { white-space: normal; }
+.alarm-count { padding: 4px 6px; border: var(--border); border-radius: 4px; background: var(--yellow); color: var(--on-accent); font-family: var(--font-display); font-size: var(--fs-xs); font-weight: 700; line-height: var(--lh-tight); }
+.alarm-panel-note,.alarm-panel-footer { max-width: 65ch; margin: 12px 0; color: inherit; font-family: var(--font-body); font-size: var(--fs-sm); line-height: var(--lh-secondary); }
+.alarm-list { display: grid; gap: 12px; }
+.alarm-timer { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.alarm-timer.is-live { background: var(--turquoise); color: var(--on-accent); }
+.alarm-timer-copy { min-width: 0; flex: 1 1 12rem; }
+.alarm-timer h3 { display: flex; align-items: flex-start; gap: 7px; margin: 0 0 6px; color: inherit; font-family: var(--font-display); font-size: var(--fs-lg); line-height: var(--lh-card); overflow-wrap: anywhere; }
+.alarm-timer h3 svg { margin-top: 2px; flex: none; }
+.alarm-timer p,.alarm-timer time { display: block; margin: 3px 0; color: inherit; font-family: var(--font-body); font-size: var(--fs-sm); line-height: var(--lh-secondary); overflow-wrap: anywhere; }
+.alarm-timer strong { margin-left: auto; color: inherit; font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; line-height: var(--lh-tight); letter-spacing: var(--tracking-card); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.alarm-empty { display: grid; justify-items: start; gap: 12px; padding: 24px 4px; }
+.alarm-empty p { margin: 0; color: inherit; font-size: var(--fs-base); }
+.alarm-empty span { color: inherit; font-family: var(--font-body); font-size: var(--fs-sm); line-height: var(--lh-secondary); }
+.alarm-panel-footer { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 0; }
+.alarm-panel-footer svg { margin-top: 3px; flex: none; }
+@media (max-width: 560px) { .alarm-panel { padding: 10px; } }
