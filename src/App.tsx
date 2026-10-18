@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, ChevronDown, Clock3, Download, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Download, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { db, ensurePreferences } from './db/database';
@@ -16,12 +16,26 @@ import { TimersPage } from './components/TimersPage';
 import { CONQUEST_TRACKER_ID, seedGlobalChecklists } from './lib/checklists';
 import { globalSchedules, nextScheduleOccurrence } from './lib/schedule';
 import { playCelebrationSound } from './lib/timerAlerts';
+import { NeoSelect } from './components/NeoSelect';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
 const initialTracker = { name: '', description: '', category: '', limit: 1, scope: 'character' as TrackerScope, frequency: 'none' as ResetFrequency, resetTime: '00:00', resetWeekday: 3, resetTimeZone: undefined as string | undefined, region: 'global' as Region };
 const pageIcon = { dashboard: LayoutDashboard, trackers: Gauge, timers: TimerReset, characters: Users, sources: BookOpen, settings: Settings2 };
 const pageTitleKey: Record<Page, string> = { dashboard: 'dashboard', trackers: 'trackers', timers: 'timers', characters: 'characters', sources: 'sources', settings: 'settings' };
+const themeStorageKey = 'aion2-theme';
+function applyTheme(theme: 'dark' | 'light', remember = true) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+  if (remember) {
+    try { localStorage.setItem(themeStorageKey, theme); } catch { /* Theme remains active for this session. */ }
+  }
+  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--theme-color').trim());
+}
+function initialTheme(): 'dark' | 'light' {
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+}
 const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const confettiPieces = Array.from({ length: 30 }, (_, index) => ({
   x: `${(index * 37 + 11) % 100}%`,
@@ -48,7 +62,7 @@ function App() {
   const characters = useLiveQuery(() => db.characters.orderBy('name').toArray(), []) ?? [];
   const trackers = useLiveQuery(() => db.trackers.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const progress = useLiveQuery(() => db.progress.toArray(), []) ?? [];
-  const preferences = useLiveQuery(() => db.preferences.get('main'), []) ?? { id: 'main', language: 'es', theme: 'dark', compact: false };
+  const preferences = useLiveQuery(() => db.preferences.get('main'), []) ?? { id: 'main', language: 'es', theme: initialTheme(), compact: false };
   const [activeCharacter, setActiveCharacter] = useState('');
   const [modal, setModal] = useState<'character' | 'tracker' | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
@@ -58,7 +72,11 @@ function App() {
   const active = characters.find((character) => character.id === activeCharacter) ?? characters[0] ?? null;
 
   useEffect(() => {
-    document.documentElement.dataset.theme = preferences.theme;
+    let savedTheme: string | null = null;
+    try { savedTheme = localStorage.getItem(themeStorageKey); } catch { /* Use the system preference when storage is unavailable. */ }
+    const theme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : initialTheme();
+    applyTheme(theme, savedTheme === 'dark' || savedTheme === 'light');
+    if (preferences.theme !== theme) void db.preferences.put({ ...preferences, theme });
     document.documentElement.lang = preferences.language;
     if (i18n.language !== preferences.language) void i18n.changeLanguage(preferences.language);
   }, [preferences.language, preferences.theme]);
@@ -70,6 +88,7 @@ function App() {
   useEffect(() => { void seedGlobalChecklists(); }, []);
 
   async function savePreferences(patch: Partial<Preferences>) {
+    if (patch.theme) applyTheme(patch.theme);
     const current = await ensurePreferences();
     await db.preferences.put({ ...current, ...patch });
   }
@@ -159,11 +178,11 @@ function App() {
     <header className="sidebar">
       <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION2</b><small>COMPANION</small></span></button>
       <div className="sidebar-caption">{t('eyebrow')}</div>
-      <nav aria-label={t('mainNavigation')} className="main-nav">
+      <nav aria-label={t('mainNavigation')} className="main-nav icon-nav">
         {(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => {
           const Icon = pageIcon[item];
           const activeTrackerCount = trackers.filter((tracker) => !tracker.archived).length;
-          return <button key={item} type="button" title={t(pageTitleKey[item])} aria-label={t(pageTitleKey[item])} aria-current={page === item ? 'page' : undefined} className={`nav-link ${page === item ? 'active' : ''}`} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><span>{t(pageTitleKey[item])}</span>{item === 'trackers' && activeTrackerCount > 0 && <span className="nav-count" aria-hidden="true">{activeTrackerCount}</span>}</button>;
+          return <button key={item} type="button" title={t(pageTitleKey[item])} data-label={t(pageTitleKey[item])} aria-label={t(pageTitleKey[item])} aria-current={page === item ? 'page' : undefined} className={`nav-link icon-btn ${page === item ? 'active' : ''}`} onClick={() => setPage(item)}><Icon size={22} strokeWidth={2.5} aria-hidden="true" /><span>{t(pageTitleKey[item])}</span>{item === 'trackers' && activeTrackerCount > 0 && <span className="nav-count" aria-hidden="true">{activeTrackerCount}</span>}</button>;
         })}
       </nav>
       <div className="sidebar-spacer" />
@@ -171,15 +190,16 @@ function App() {
       <div className="sidebar-footer">{t('projectNotice')}</div>
       <ResetTicker trackers={trackers} language={preferences.language} />
       <div className="top-actions">
-        <label className="character-select"><Users size={15} /><select aria-label={t('selectCharacter')} value={active?.id ?? ''} onChange={(event) => setActiveCharacter(event.target.value)}><option value="">{characters.length ? t('allCharacters') : t('localProfile')}</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name} · {character.server || t('unknown')}</option>)}</select><ChevronDown size={14} /></label>
+        <div className="character-select"><NeoSelect ariaLabel={t('selectCharacter')} value={active?.id ?? ''} onChange={(value) => setActiveCharacter(String(value))} leadingIcon={<Users size={15} />} options={[{ value: '', label: characters.length ? t('allCharacters') : t('localProfile') }, ...characters.map((character) => ({ value: character.id, label: `${character.name} · ${character.server || t('unknown')}` }))]} /></div>
         <button className="icon-button" title={t('language')} aria-label={`${t('language')}: ${preferences.language === 'es' ? 'English' : 'Español'}`} onClick={() => void savePreferences({ language: preferences.language === 'es' ? 'en' : 'es' })}><Languages size={17} aria-hidden="true" /><span className="lang-short">{preferences.language.toUpperCase()}</span></button>
-        <button className="icon-button theme-toggle" title={t('theme')} aria-label={`${t('theme')}: ${preferences.theme === 'dark' ? t('light') : t('dark')}`} onClick={() => void savePreferences({ theme: preferences.theme === 'dark' ? 'light' : 'dark' })}>{preferences.theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}</button>
+        <button type="button" className="icon-button theme-toggle" title={t('theme')} aria-label={preferences.theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')} aria-pressed={preferences.theme === 'dark'} onClick={() => void savePreferences({ theme: preferences.theme === 'dark' ? 'light' : 'dark' })}>{preferences.theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}</button>
       </div>
     </header>
     <main className="main-area" id="main-content" tabIndex={-1}>
       <div className="page-wrap"><AnimatePresence mode="wait"><motion.div id="page-content" key={page} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onAnimationComplete={() => { if (previousPage.current !== page) { document.querySelector<HTMLElement>('#page-content h1')?.focus(); previousPage.current = page; } }}>{pageContent}</motion.div></AnimatePresence></div>
     </main>
     <nav className="mobile-nav" aria-label={t('mainNavigation')}>{(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => { const Icon = pageIcon[item]; return <button type="button" key={item} aria-current={page === item ? 'page' : undefined} aria-label={t(pageTitleKey[item])} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><small>{t(pageTitleKey[item])}</small></button>; })}</nav>
+    <footer className="app-footer"><span>AION2COMPANION</span></footer>
     {modal === 'character' && <CharacterDialog initial={editingCharacter} onClose={() => setModal(null)} onSaved={(character) => { if (!activeCharacter) setActiveCharacter(character.id); setModal(null); notify(t('saved')); }} />}
     {modal === 'tracker' && <TrackerDialog initial={editingTracker} onClose={() => setModal(null)} onSaved={() => { setModal(null); notify(t('saved')); }} />}
     <AnimatePresence>{toast && <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><Check size={16} aria-hidden="true" />{toast}</motion.div>}</AnimatePresence>
@@ -223,7 +243,11 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weekly?.resetTimeZone ?? 'Asia/Seoul' }).format(weeklyAt).toUpperCase() : '';
   const riftTime = riftAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: riftZone }).format(riftAt) : '';
   const clock = new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
-  const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" style={{ '--timer-progress': `${remainingFraction(target, start) * 360}deg` } as React.CSSProperties} aria-hidden="true" /><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
+  const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => {
+    const progress = remainingFraction(target, start);
+    const circumference = 2 * Math.PI * 12;
+    return <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" aria-hidden="true"><svg viewBox="0 0 32 32"><circle className="header-timer-track" cx="16" cy="16" r="12" /><circle className="header-timer-progress" cx="16" cy="16" r="12" style={{ strokeDashoffset: circumference * (1 - progress) }} /></svg></span><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
+  };
 
   return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
     <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
@@ -265,9 +289,10 @@ function Dashboard({ trackers, characters, progress, active, trackerOrder, saveP
     return items.length ? Math.round(complete / items.length * 100) : 0;
   };
   const welcome = remaining === 0 ? (i18n.resolvedLanguage?.startsWith('en') ? 'All done!' : '¡Todo listo!') : (i18n.resolvedLanguage?.startsWith('en') ? 'Start the day' : 'Empieza el día');
+  const overviewCircumference = 2 * Math.PI * 44;
   return <div className="companion-home">
     <section className="companion-overview" aria-label={t('summaryMetrics')}>
-      <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`} style={{ background: `conic-gradient(#e4b746 ${percent * 3.6}deg, #392c47 0deg)` }}><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{i18n.resolvedLanguage?.startsWith('en') ? 'Total progress' : 'Progreso total'}</span><h1 tabIndex={-1}>{welcome}</h1><p>{i18n.resolvedLanguage?.startsWith('en') ? `${remaining} left to do` : `Te quedan ${remaining} por hacer`}</p></div></div>
+      <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`}><svg viewBox="0 0 100 100" aria-hidden="true"><circle className="overview-ring-track" cx="50" cy="50" r="44" /><circle className="overview-ring-progress" cx="50" cy="50" r="44" style={{ strokeDashoffset: overviewCircumference * (1 - percent / 100) }} /></svg><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{i18n.resolvedLanguage?.startsWith('en') ? 'Total progress' : 'Progreso total'}</span><h1 tabIndex={-1}>{welcome}</h1><p>{i18n.resolvedLanguage?.startsWith('en') ? `${remaining} left to do` : `Te quedan ${remaining} por hacer`}</p></div></div>
       <div className="overview-bars"><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} value={dailyDone} total={daily.length} characters={characters} active={active} progress={progress} trackers={daily} /><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Semana'} value={weeklyDone} total={weekly.length} characters={characters} active={active} progress={progress} trackers={weekly} /></div>
       <div className="overview-stats"><div><Flame size={16} /><b>{done}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'done' : 'hechas'}</span></div><div><Users size={16} /><b>{characters.length || '—'}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'characters' : 'personajes'}</span></div><div><Clock3 size={16} /><b>{resetCountdown}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'to daily reset' : 'al reinicio diario'}</span></div></div>
     </section>
@@ -328,7 +353,7 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
     if (target) move(trackerId, target.id);
   };
   return <section className="checklist-panel">
-    <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><select aria-label={t('filterCategory')} value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">{t('all')}</option>{[...new Set(records.map((tracker) => tracker.category))].map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
+    <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><NeoSelect className="panel-category-select" ariaLabel={t('filterCategory')} value={category} onChange={(value) => setCategory(String(value))} options={[{ value: 'all', label: t('all') }, ...[...new Set(records.map((tracker) => tracker.category))].map((item) => ({ value: item, label: item }))]} /><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
     <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
     <span className="visually-hidden" aria-live="polite" aria-atomic="true">{reorderAnnouncement}</span>
     <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{i18n.resolvedLanguage?.startsWith('en') ? `Add ${label}` : `Añadir ${label === 'daily' ? 'diaria' : 'semanal'}`}</button>
@@ -356,7 +381,7 @@ function TrackerRow({ tracker, value, dragging, onDragStart, onDragEnd, onDrop, 
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
     <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove(1); } }}><GripVertical size={15} aria-hidden="true" /></button>
     <div className="row-copy"><div className="row-title-line"><h3 title={name}>{name}</h3></div></div>
-    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={17} aria-hidden="true" /></button></div>
+    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={18} strokeWidth={3} aria-hidden="true" /></button></div>
     <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
   </article>;
 }
@@ -486,12 +511,12 @@ function SettingsPage({ preferences, importMode, setImportMode, savePreferences,
   return <>
     <PageHeading eyebrow={t('localData')} title={t('settings')} />
     <section className="settings-card"><div className="settings-title"><div className="settings-icon"><Settings2 size={18} /></div><div><h2>{t('settings')}</h2><p>{t('localDataDesc')}</p></div></div>
-      <div className="setting-row"><div><b>{t('language')}</b><small>Español / English</small></div><select aria-label={t('language')} value={preferences.language} onChange={(event) => void savePreferences({ language: event.target.value as 'es' | 'en' })}><option value="es">Español</option><option value="en">English</option></select></div>
-      <div className="setting-row"><div><b>{t('theme')}</b><small>{preferences.theme === 'dark' ? t('dark') : t('light')}</small></div><select aria-label={t('theme')} value={preferences.theme} onChange={(event) => void savePreferences({ theme: event.target.value as 'dark' | 'light' })}><option value="dark">{t('dark')}</option><option value="light">{t('light')}</option></select></div>
+      <div className="setting-row"><div><b>{t('language')}</b><small>Español / English</small></div><NeoSelect ariaLabel={t('language')} value={preferences.language} onChange={(value) => void savePreferences({ language: String(value) as 'es' | 'en' })} options={[{ value: 'es', label: 'Español' }, { value: 'en', label: 'English' }]} /></div>
+      <div className="setting-row"><div><b>{t('theme')}</b><small>{preferences.theme === 'dark' ? t('dark') : t('light')}</small></div><NeoSelect ariaLabel={t('theme')} value={preferences.theme} onChange={(value) => void savePreferences({ theme: String(value) as 'dark' | 'light' })} options={[{ value: 'dark', label: t('dark') }, { value: 'light', label: t('light') }]} /></div>
       <div className="setting-row"><div><b>{t('compact')}</b><small>{t('subtitle')}</small></div><button className={`switch ${preferences.compact ? 'on' : ''}`} role="switch" aria-checked={preferences.compact} aria-label={t('compact')} onClick={() => void savePreferences({ compact: !preferences.compact })}><span /></button></div>
     </section>
     <section className="settings-card"><div className="settings-title"><div className="settings-icon blue"><ArrowDownToLine size={18} /></div><div><h2>{t('localData')}</h2><p>{t('localDataDesc')}</p></div></div><div className="setting-row"><div><b>{t('export')}</b><small>JSON · schema 1</small></div><button className="button button-secondary" onClick={() => void downloadBackup()}><Download size={15} />{t('export')}</button></div>
-      <div className="setting-row"><div><b>{t('import')}</b><small>{t('importMode')}</small></div><select aria-label={t('importMode')} value={importMode} onChange={(event) => setImportMode(event.target.value as 'merge' | 'replace')}><option value="merge">{t('merge')}</option><option value="replace">{t('replace')}</option></select></div>
+      <div className="setting-row"><div><b>{t('import')}</b><small>{t('importMode')}</small></div><NeoSelect ariaLabel={t('importMode')} value={importMode} onChange={(value) => setImportMode(String(value) as 'merge' | 'replace')} options={[{ value: 'merge', label: t('merge') }, { value: 'replace', label: t('replace') }]} /></div>
       <div className="setting-row"><div><b>{t('chooseFile')}</b><small>{t('maxFile')}</small></div><label className="button button-secondary file-button"><ArrowUpFromLine size={15} />{t('import')}<input type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event.target.files?.[0]); event.target.value = ''; }} /></label></div>
     </section>
     <section className="settings-card"><div className="settings-title"><div className="settings-icon danger-bg"><Trash2 size={17} /></div><div><h2>{t('resetData')}</h2><p>{t('deleteWarning')}</p></div></div><div className="danger-actions"><button onClick={() => void clearData('trackers')}>{t('resetTrackers')}</button><button onClick={() => void clearData('characters')}>{t('resetCharacters')}</button><button onClick={() => void clearData('all')}><Trash2 size={14} />{t('resetAll')}</button></div></section>
@@ -513,7 +538,7 @@ function CharacterDialog({ initial, onClose, onSaved }: { initial: Character | n
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return <Modal title={initial ? t('edit') : t('addCharacter')} onClose={onClose}><form onSubmit={(event) => void submit(event)} className="form-grid">
     <label className="field full"><span>{t('name')} *</span><input autoFocus maxLength={60} value={form.name} onChange={(event) => set('name', event.target.value)} required /></label>
-    <label className="field"><span>{t('region')}</span><select value={form.region} onChange={(event) => set('region', event.target.value)}><option value="global">Global</option><option value="korea">Corea</option><option value="taiwan">Taiwán</option><option value="unknown">{t('unknown')}</option></select></label>
+    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: 'Global' }, { value: 'korea', label: 'Corea' }, { value: 'taiwan', label: 'Taiwán' }, { value: 'unknown', label: t('unknown') }]} /></label>
     <label className="field"><span>{t('server')}</span><input maxLength={60} value={form.server} onChange={(event) => set('server', event.target.value)} /></label>
     <label className="field full"><span>{t('className')}</span><input maxLength={40} placeholder={t('classPlaceholder')} value={form.className} onChange={(event) => set('className', event.target.value)} /></label>
     {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
@@ -538,10 +563,10 @@ function TrackerDialog({ initial, onClose, onSaved }: { initial: Tracker | null;
     <label className="field full"><span>{t('description')}</span><input maxLength={200} value={form.description} onChange={(event) => set('description', event.target.value)} /></label>
     <label className="field"><span>{t('category')}</span><input maxLength={40} placeholder={t('categoryPlaceholder')} value={form.category} onChange={(event) => set('category', event.target.value)} required /></label>
     <label className="field"><span>{t('limit')}</span><input type="number" min={1} max={999} value={form.limit} onChange={(event) => set('limit', Number(event.target.value))} required /></label>
-    <label className="field"><span>{t('scope')}</span><select value={form.scope} onChange={(event) => set('scope', event.target.value)}><option value="character">{t('scopeCharacter')}</option><option value="server">{t('scopeServer')}</option><option value="account">{t('scopeAccount')}</option></select></label>
-    <label className="field"><span>{t('region')}</span><select value={form.region} onChange={(event) => set('region', event.target.value)}><option value="global">Global</option><option value="korea">Corea</option><option value="taiwan">Taiwán</option><option value="unknown">{t('unknown')}</option></select></label>
-    <label className="field full"><span>{t('reset')}</span><select value={form.frequency} onChange={(event) => set('frequency', event.target.value)}><option value="none">{t('noReset')}</option><option value="daily">{t('dailyReset')}</option><option value="weekly">{t('weeklyReset')}</option></select></label>
-    {form.frequency !== 'none' && <><label className="field"><span>{t('resetTime')}</span><input type="time" value={form.resetTime} onChange={(event) => set('resetTime', event.target.value)} /></label>{form.frequency === 'weekly' && <label className="field"><span>{t('resetDay')}</span><select value={form.resetWeekday} onChange={(event) => set('resetWeekday', Number(event.target.value))}>{weekdays.map((day, i) => <option value={i} key={day}>{t(day)}</option>)}</select></label>}<p className="field-help full">Estos límites y horarios son preferencias personales para organizar el registro. La aplicación no los presenta como reglas oficiales del juego.</p></>}
+    <label className="field"><span>{t('scope')}</span><NeoSelect value={form.scope} onChange={(value) => set('scope', String(value))} options={[{ value: 'character', label: t('scopeCharacter') }, { value: 'server', label: t('scopeServer') }, { value: 'account', label: t('scopeAccount') }]} /></label>
+    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: 'Global' }, { value: 'korea', label: 'Corea' }, { value: 'taiwan', label: 'Taiwán' }, { value: 'unknown', label: t('unknown') }]} /></label>
+    <label className="field full"><span>{t('reset')}</span><NeoSelect value={form.frequency} onChange={(value) => set('frequency', String(value))} options={[{ value: 'none', label: t('noReset') }, { value: 'daily', label: t('dailyReset') }, { value: 'weekly', label: t('weeklyReset') }]} /></label>
+    {form.frequency !== 'none' && <><label className="field"><span>{t('resetTime')}</span><input type="time" value={form.resetTime} onChange={(event) => set('resetTime', event.target.value)} /></label>{form.frequency === 'weekly' && <label className="field"><span>{t('resetDay')}</span><NeoSelect value={form.resetWeekday} onChange={(value) => set('resetWeekday', Number(value))} options={weekdays.map((day, i) => ({ value: i, label: t(day) }))} /></label>}<p className="field-help full">Estos límites y horarios son preferencias personales para organizar el registro. La aplicación no los presenta como reglas oficiales del juego.</p></>}
     {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
   </form></Modal>;
 }

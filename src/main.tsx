@@ -6,7 +6,7 @@ import './i18n';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/pwa.css';
-import './styles/neo-brutalist.css';
+import './styles/modern-neo.css';
 import { ensurePreferences } from './db/database';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 60_000, refetchOnWindowFocus: false } } });

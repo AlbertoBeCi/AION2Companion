@@ -33,7 +33,7 @@ export default defineConfig({
     includeAssets: ['favicon.svg'],
     manifest: {
       name: 'AION 2 Companion', short_name: 'AION 2', description: 'Seguimiento manual y local para AION 2.',
-      theme_color: '#090d16', background_color: '#090d16', display: 'standalone', start_url: '/',
+      theme_color: '#2855F5', background_color: '#111111', lang: 'es', display: 'standalone', start_url: '/',
       icons: [
         { src: '/favicon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
         { src: '/favicon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }

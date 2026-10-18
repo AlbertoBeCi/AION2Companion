@@ -30,10 +30,20 @@ class CompanionDatabase extends Dexie {
 
 export const db = new CompanionDatabase();
 
+function initialThemePreference(): 'dark' | 'light' {
+  try {
+    const saved = localStorage.getItem('aion2-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
 export async function ensurePreferences(): Promise<Preferences> {
   const existing = await db.preferences.get('main');
   if (existing) return existing;
-  const defaults: Preferences = { id: 'main', language: 'es', theme: 'dark', compact: false };
+  const defaults: Preferences = { id: 'main', language: 'es', theme: initialThemePreference(), compact: false };
   await db.preferences.put(defaults);
   return defaults;
 }
