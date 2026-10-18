@@ -79,13 +79,13 @@ const pageCopy = {
 } as const;
 
 const legalSources = [
-  { label: 'RGPD · Reglamento (UE) 2016/679', href: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32016R0679' },
-  { label: 'LSSI-CE · Ley 34/2002, arts. 10 y 22.2', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-13758' },
-  { label: 'LOPDGDD · Ley Orgánica 3/2018, art. 7', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673' },
-  { label: 'Ley 11/2023 · accesibilidad', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2023-11022' },
-  { label: 'AEPD · Guía sobre el uso de cookies', href: 'https://www.aepd.es/guias/guia-cookies.pdf' },
-  { label: 'Netlify · Privacy Policy', href: 'https://www.netlify.com/privacy/' },
-  { label: 'Ko-fi · Privacy Policy', href: 'https://more.ko-fi.com/privacy' },
+  { labelEs: 'RGPD · Reglamento (UE) 2016/679', labelEn: 'GDPR · Regulation (EU) 2016/679', href: 'https://eur-lex.europa.eu/legal-content/ES/TXT/?uri=CELEX:32016R0679' },
+  { labelEs: 'LSSI-CE · Ley 34/2002, arts. 10 y 22.2', labelEn: 'LSSI-CE · Law 34/2002, sections 10 and 22.2', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2002-13758' },
+  { labelEs: 'LOPDGDD · Ley Orgánica 3/2018, art. 7', labelEn: 'LOPDGDD · Organic Law 3/2018, section 7', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2018-16673' },
+  { labelEs: 'Ley 11/2023 · accesibilidad', labelEn: 'Law 11/2023 · accessibility', href: 'https://www.boe.es/buscar/act.php?id=BOE-A-2023-11022' },
+  { labelEs: 'AEPD · Guía sobre el uso de cookies', labelEn: 'AEPD · Cookie guidance', href: 'https://www.aepd.es/guias/guia-cookies.pdf' },
+  { labelEs: 'Netlify · Política de privacidad', labelEn: 'Netlify · Privacy Policy', href: 'https://www.netlify.com/privacy/' },
+  { labelEs: 'Ko-fi · Política de privacidad', labelEn: 'Ko-fi · Privacy Policy', href: 'https://more.ko-fi.com/privacy' },
 ];
 
 export function LegalPage({ page }: { page: LegalPage }) {
@@ -98,6 +98,6 @@ export function LegalPage({ page }: { page: LegalPage }) {
     <header className="legal-page-heading"><div className="eyebrow">{copy.eyebrow}</div><h1 tabIndex={-1}>{copy.title}</h1><p>{copy.intro}</p></header>
     <div className="legal-section-list">{copy.sections.map((section) => <section className="legal-card" key={section.title}><h2>{section.title}</h2><p>{section.body}</p></section>)}</div>
     {page === 'about' && creatorSupportUrl && <a className="button button-primary support-creator" href={creatorSupportUrl} target="_blank" rel="noopener noreferrer">{language === 'es' ? 'Invítame a un café en Ko-fi' : 'Buy me a coffee on Ko-fi'} <ExternalLink size={14} aria-hidden="true" /></a>}
-    <section className="legal-reference" aria-labelledby="legal-reference-title"><h2 id="legal-reference-title">{legalLabel}</h2><ul>{legalSources.map((source) => <li key={source.href}><a href={source.href} target="_blank" rel="noopener noreferrer">{source.label} <ExternalLink size={12} aria-hidden="true" /></a></li>)}</ul></section>
+    <section className="legal-reference" aria-labelledby="legal-reference-title"><h2 id="legal-reference-title">{legalLabel}</h2><ul>{legalSources.map((source) => <li key={source.href}><a href={source.href} target="_blank" rel="noopener noreferrer">{language === 'es' ? source.labelEs : source.labelEn} <ExternalLink size={12} aria-hidden="true" /></a></li>)}</ul></section>
   </article>;
 }

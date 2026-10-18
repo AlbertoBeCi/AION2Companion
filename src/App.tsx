@@ -21,6 +21,7 @@ import { LegalPage } from './components/LegalPages';
 import { clearLocalSettings } from './lib/localSettings';
 import { creatorSupportUrl } from './lib/siteConfig';
 import { formatLocalClock } from './lib/timeDisplay';
+import { trackerCopy } from './lib/trackerCopy';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
@@ -238,6 +239,7 @@ function App() {
 }
 
 function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'es' | 'en' }) {
+  const t = useLocale();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -268,8 +270,8 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
     const remainder = seconds % 60;
     return `${days ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
   };
-  const dailyLabel = language === 'es' ? 'Diario' : 'Daily';
-  const weeklyLabel = language === 'es' ? 'Semanal' : 'Weekly';
+  const dailyLabel = t('dailyTicker');
+  const weeklyLabel = t('weeklyTicker');
   const dailyLocal = dailyAt ? formatLocalClock(dailyAt, language) : null;
   const weeklyLocal = weeklyAt ? formatLocalClock(weeklyAt, language) : null;
   const riftLocal = riftAt ? formatLocalClock(riftAt, language) : null;
@@ -280,7 +282,7 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
     return <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" aria-hidden="true"><svg viewBox="0 0 32 32"><circle className="header-timer-track" cx="16" cy="16" r="12" /><circle className="header-timer-progress" cx="16" cy="16" r="12" style={{ strokeDashoffset: circumference * (1 - progress) }} /></svg></span><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
   };
 
-  return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
+  return <div className="reset-ticker" role="group" aria-label={t('clockAndTimers')}>
     <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
     {timer('daily', dailyLabel, dailyLocal ? `${dailyLocal.time} ${dailyLocal.zone}` : '—', dailyAt, dailyFrom)}
     {timer('weekly', weeklyLabel, weeklyLocal ? `${weeklyLocal.weekday} ${weeklyLocal.time} ${weeklyLocal.zone}` : '—', weeklyAt, weeklyFrom)}
@@ -319,23 +321,23 @@ function Dashboard({ trackers, characters, progress, active, trackerOrder, saveP
     const complete = items.filter((tracker) => currentValue(tracker, person, progress) >= tracker.limit).length;
     return items.length ? Math.round(complete / items.length * 100) : 0;
   };
-  const welcome = remaining === 0 ? (i18n.resolvedLanguage?.startsWith('en') ? 'All done!' : '¡Todo listo!') : (i18n.resolvedLanguage?.startsWith('en') ? 'Start the day' : 'Empieza el día');
+  const welcome = remaining === 0 ? t('allDone') : t('startDay');
   const overviewCircumference = 2 * Math.PI * 44;
   return <div className="companion-home">
     <section className="companion-overview" aria-label={t('summaryMetrics')}>
-      <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`}><svg viewBox="0 0 100 100" aria-hidden="true"><circle className="overview-ring-track" cx="50" cy="50" r="44" /><circle className="overview-ring-progress" cx="50" cy="50" r="44" style={{ strokeDashoffset: overviewCircumference * (1 - percent / 100) }} /></svg><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{i18n.resolvedLanguage?.startsWith('en') ? 'Total progress' : 'Progreso total'}</span><h1 tabIndex={-1}>{welcome}</h1><p>{i18n.resolvedLanguage?.startsWith('en') ? `${remaining} left to do` : `Te quedan ${remaining} por hacer`}</p></div></div>
-      <div className="overview-bars"><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} value={dailyDone} total={daily.length} characters={characters} active={active} progress={progress} trackers={daily} /><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Semana'} value={weeklyDone} total={weekly.length} characters={characters} active={active} progress={progress} trackers={weekly} /></div>
-      <div className="overview-stats"><div><Flame size={16} /><b>{done}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'done' : 'hechas'}</span></div><div><Users size={16} /><b>{characters.length || '—'}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'characters' : 'personajes'}</span></div><div><Clock3 size={16} /><b>{resetCountdown}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'to daily reset' : 'al reinicio diario'}</span></div></div>
+      <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`}><svg viewBox="0 0 100 100" aria-hidden="true"><circle className="overview-ring-track" cx="50" cy="50" r="44" /><circle className="overview-ring-progress" cx="50" cy="50" r="44" style={{ strokeDashoffset: overviewCircumference * (1 - percent / 100) }} /></svg><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{t('totalProgress')}</span><h1 tabIndex={-1}>{welcome}</h1><p>{t('leftToDo', { count: remaining })}</p></div></div>
+      <div className="overview-bars"><ProgressSummary label={t('todayShort')} value={dailyDone} total={daily.length} characters={characters} active={active} progress={progress} trackers={daily} /><ProgressSummary label={t('weekShort')} value={weeklyDone} total={weekly.length} characters={characters} active={active} progress={progress} trackers={weekly} /></div>
+      <div className="overview-stats"><div><Flame size={16} /><b>{done}</b><span>{t('donePlural')}</span></div><div><Users size={16} /><b>{characters.length || '—'}</b><span>{t('characters')}</span></div><div><Clock3 size={16} /><b>{resetCountdown}</b><span>{t('dailyResetCountdown')}</span></div></div>
     </section>
 
     <section className="companion-character-strip" aria-label={t('characters')}>
-      <div className="character-chips">{characters.length ? characters.map((character) => <button type="button" key={character.id} className={`character-chip${active?.id === character.id ? ' selected' : ''}`} aria-pressed={active?.id === character.id} onClick={() => onSelectCharacter(character.id)}><span className="character-avatar">{character.name.slice(0, 1).toUpperCase()}</span><span><b>{character.name}</b><small>{i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} {perScope(character, daily)}% · {i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Sem'} {perScope(character, weekly)}%</small></span><strong>{perScope(character, timed)}%</strong></button>) : <div className="character-chip selected"><span className="character-avatar">A</span><span><b>{t('localProfile')}</b><small>{t('noCharactersDesc')}</small></span><strong>{percent}%</strong></div>}</div>
+      <div className="character-chips">{characters.length ? characters.map((character) => <button type="button" key={character.id} className={`character-chip${active?.id === character.id ? ' selected' : ''}`} aria-pressed={active?.id === character.id} onClick={() => onSelectCharacter(character.id)}><span className="character-avatar">{character.name.slice(0, 1).toUpperCase()}</span><span><b>{character.name}</b><small>{t('todayShort')} {perScope(character, daily)}% · {t('weekShort')} {perScope(character, weekly)}%</small></span><strong>{perScope(character, timed)}%</strong></button>) : <div className="character-chip selected"><span className="character-avatar">A</span><span><b>{t('localProfile')}</b><small>{t('noCharactersDesc')}</small></span><strong>{percent}%</strong></div>}</div>
       <button className="button button-secondary roster-button" onClick={() => onNavigate('characters')}><Users size={15} />{t('characters')}</button>
     </section>
 
     <section className="companion-lists" aria-label={t('recordProgress')}>
-      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Daily' : 'Diarias'} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
-      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Weekly' : 'Semanales'} records={weekly} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('weekly', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel title={t('dailySection')} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel title={t('weeklySection')} records={weekly} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('weekly', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
     </section>
   </div>;
 }
@@ -350,12 +352,13 @@ function shortCountdown(target: Date | null): string {
 }
 
 function ProgressSummary({ label, value, total, characters, active, progress, trackers }: { label: string; value: number; total: number; characters: Character[]; active: Character | null; progress: ProgressEntry[]; trackers: Tracker[] }) {
+  const t = useLocale();
   const pct = total ? Math.round(value / total * 100) : 0;
   const others = characters.filter((character) => character.id !== active?.id);
   const altPercent = others.length ? `${Math.round(others.reduce((sum, character) => sum + (trackers.length ? trackers.filter((tracker) => currentValue(tracker, character, progress) >= tracker.limit).length / trackers.length * 100 : 0), 0) / others.length)}%` : '—';
   const accountTrackers = trackers.filter((tracker) => tracker.scope === 'account');
   const accountPercent = accountTrackers.length ? `${Math.round(accountTrackers.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length / accountTrackers.length * 100)}%` : '—';
-  return <div className="overview-progress-row"><div className="overview-progress-top"><b>{label}</b><strong>{value}/{total}</strong></div><div className="overview-progress-track"><span style={{ width: `${pct}%` }} /></div><div className="overview-progress-legend"><span><i className="legend-main" />{active?.name ?? 'MAIN'} <b>{pct}%</b></span><span><i className="legend-alt" />Alts <b>{altPercent}</b></span><span><i className="legend-account" />Cuenta <b>{accountPercent}</b></span></div></div>;
+  return <div className="overview-progress-row"><div className="overview-progress-top"><b>{label}</b><strong>{value}/{total}</strong></div><div className="overview-progress-track"><span style={{ width: `${pct}%` }} /></div><div className="overview-progress-legend"><span><i className="legend-main" />{active?.name ?? t('mainCharacter')} <b>{pct}%</b></span><span><i className="legend-alt" />{t('alternateCharacters')} <b>{altPercent}</b></span><span><i className="legend-account" />{t('account')} <b>{accountPercent}</b></span></div></div>;
 }
 
 function ChecklistPanel({ title, records, active, progress, onProgress, onReorder, onAdd, onEdit, onDelete, resetText, emptyText }: { title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onReorder: (ids: string[]) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
@@ -365,7 +368,7 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
   const [reorderAnnouncement, setReorderAnnouncement] = useState('');
   const completed = records.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
   const filtered = category === 'all' ? records : records.filter((tracker) => tracker.category === category);
-  const label = title === 'Diarias' || title === 'Daily' ? 'daily' : 'weekly';
+  const label = title === t('dailySection') ? 'daily' : 'weekly';
   const move = (fromId: string, toId: string) => {
     if (fromId === toId) return;
     const ids = records.map((tracker) => tracker.id);
@@ -384,18 +387,20 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
     if (target) move(trackerId, target.id);
   };
   return <section className="checklist-panel">
-    <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><NeoSelect className="panel-category-select" ariaLabel={t('filterCategory')} value={category} onChange={(value) => setCategory(String(value))} options={[{ value: 'all', label: t('all') }, ...[...new Set(records.map((tracker) => tracker.category))].map((item) => ({ value: item, label: item }))]} /><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
+    <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><NeoSelect className="panel-category-select" ariaLabel={t('filterCategory')} value={category} onChange={(value) => setCategory(String(value))} options={[{ value: 'all', label: t('all') }, ...[...new Set(records.map((tracker) => tracker.category))].map((item) => ({ value: item, label: trackerCopy(records.find((tracker) => tracker.category === item)!, i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es').category }))]} /><button type="button" aria-label={t(label === 'daily' ? 'resetAllDaily' : 'resetAllWeekly')} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={t(label === 'daily' ? 'completeVisibleDaily' : 'completeVisibleWeekly')} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
     <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
     <span className="visually-hidden" aria-live="polite" aria-atomic="true">{reorderAnnouncement}</span>
-    <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{i18n.resolvedLanguage?.startsWith('en') ? `Add ${label}` : `Añadir ${label === 'daily' ? 'diaria' : 'semanal'}`}</button>
+    <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{t(label === 'daily' ? 'addDaily' : 'addWeekly')}</button>
   </section>;
 }
 
 function TrackerRow({ tracker, value, dragging, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; dragging: boolean; onDragStart: () => void; onDragEnd: () => void; onDrop: () => void; onMove: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
   const t = useLocale();
+  const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
+  const copy = trackerCopy(tracker, language);
   const [celebration, setCelebration] = useState(false);
   const complete = value >= tracker.limit;
-  const name = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : tracker.name;
+  const name = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : copy.name;
   useEffect(() => {
     if (!celebration) return;
     const timer = window.setTimeout(() => setCelebration(false), 1500);
@@ -412,7 +417,7 @@ function TrackerRow({ tracker, value, dragging, onDragStart, onDragEnd, onDrop, 
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
     <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove(1); } }}><GripVertical size={15} aria-hidden="true" /></button>
     <div className="row-copy"><div className="row-title-line"><h3 title={name}>{name}</h3></div></div>
-    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={18} strokeWidth={3} aria-hidden="true" /></button></div>
+    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${t('setProgress')} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={18} strokeWidth={3} aria-hidden="true" /></button></div>
     <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
   </article>;
 }
@@ -430,9 +435,11 @@ function currentValue(tracker: Tracker, active: Character | null, entries: Progr
 
 function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void }) {
   const t = useLocale();
+  const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
+  const copy = trackerCopy(tracker, language);
   const [celebration, setCelebration] = useState(0);
-  const displayName = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : tracker.name;
-  const displayDescription = tracker.id === CONQUEST_TRACKER_ID ? t('conquestDescription') : tracker.description || t('noDescription');
+  const displayName = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : copy.name;
+  const displayDescription = tracker.id === CONQUEST_TRACKER_ID ? t('conquestDescription') : copy.description || t('noDescription');
   const percent = progressPercent(value, tracker.limit);
   const isComplete = value >= tracker.limit;
   const due = nextReset(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
@@ -458,23 +465,24 @@ function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: 
     </div>}
     <div className="tracker-card-head"><div className="tracker-glyph"><Gauge size={16} /></div><span className="scope-badge">{tracker.frequency === 'none' ? t('noReset') : tracker.frequency === 'daily' ? t('dailyReset') : t('weeklyReset')}</span>{onEdit && <button className="micro-action" aria-label={`${t('edit')} ${displayName}`} onClick={onEdit}>···</button>}</div>
     <h3>{displayName}</h3><p className="tracker-desc">{displayDescription}</p>
-    <div className="tracker-meta"><span>{tracker.category}</span><span>{ownerLabel}</span><span className={`user-made ${tracker.provenance === 'community' ? 'community-made' : ''}`}>{tracker.provenance === 'community' ? t('statusCommunity') : t('userDefined')}</span></div>
+    <div className="tracker-meta"><span>{copy.category}</span><span>{ownerLabel}</span><span className={`user-made ${tracker.provenance === 'community' ? 'community-made' : ''}`}>{tracker.provenance === 'community' ? t('statusCommunity') : t('userDefined')}</span></div>
     <div className="progress-label"><strong>{value}<span> / {tracker.limit}</span></strong><small>{percent}%</small></div>
     <div className={`progress-track${isComplete ? ' is-complete' : ''}`} role="progressbar" aria-label={displayName} aria-valuemin={0} aria-valuemax={tracker.limit} aria-valuenow={value} aria-valuetext={`${value} ${t('of')} ${tracker.limit}`}><span aria-hidden="true" style={{ width: `${percent}%` }} /></div>
-    <div className="tracker-card-foot"><small>{due ? `${t(tracker.resetTimeZone ? 'nextGlobalReset' : 'nextReset')}: ${due.toLocaleString()}` : t('notGameSync')}</small><div className="stepper"><button type="button" aria-label={`${t('decrease')} ${displayName}`} disabled={value <= 0} onClick={() => void recordProgress(-1)}>−</button><button type="button" aria-label={`${t('increase')} ${displayName}`} disabled={value >= tracker.limit} onClick={() => void recordProgress(1)}>+</button></div></div>
+    <div className="tracker-card-foot"><small>{due ? `${t(tracker.resetTimeZone ? 'nextGlobalReset' : 'nextReset')}: ${new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(due)}` : t('notGameSync')}</small><div className="stepper"><button type="button" aria-label={`${t('decrease')} ${displayName}`} disabled={value <= 0} onClick={() => void recordProgress(-1)}>−</button><button type="button" aria-label={`${t('increase')} ${displayName}`} disabled={value >= tracker.limit} onClick={() => void recordProgress(1)}>+</button></div></div>
   </article>;
 }
 
 interface TrackersPageProps { trackers: Tracker[]; characters: Character[]; progress: ProgressEntry[]; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; }
 function TrackersPage({ trackers, characters, progress, active, onProgress, onAdd, onEdit, onDelete }: TrackersPageProps) {
   const t = useLocale();
+  const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
   const [section, setSection] = useState<ResetFrequency | 'archived'>('daily');
   const [category, setCategory] = useState('all');
   const activeTrackers = trackers.filter((item) => !item.archived);
   const archivedTrackers = trackers.filter((item) => item.archived);
   const sections: Array<{ id: ResetFrequency | 'archived'; title: string }> = [{ id: 'daily', title: t('dailySection') }, { id: 'weekly', title: t('weeklySection') }];
   if (activeTrackers.some((item) => item.frequency === 'none')) sections.push({ id: 'none', title: t('otherTrackers') });
-  if (archivedTrackers.length) sections.push({ id: 'archived', title: i18n.resolvedLanguage?.startsWith('en') ? 'Archived' : 'Archivados' });
+  if (archivedTrackers.length) sections.push({ id: 'archived', title: t('archived') });
   useEffect(() => {
     if (!sections.some((item) => item.id === section)) {
       setSection('daily');
@@ -507,8 +515,8 @@ function TrackersPage({ trackers, characters, progress, active, onProgress, onAd
     </div>
     <p className="checklist-summary" role="status">{sectionDone}/{sectionTrackers.length} {t('done').toLocaleLowerCase()}</p>
     <div id={`trackers-panel-${section}`} role="tabpanel" aria-labelledby={`trackers-tab-${section}`} tabIndex={0}>
-      <div className="filters-row" role="group" aria-label={t('filterCategory')}><span className="filter-label">{t('filterCategory')}</span><button type="button" aria-pressed={category === 'all'} className={`filter-chip ${category === 'all' ? 'selected' : ''}`} onClick={() => setCategory('all')}>{t('all')}</button>{categories.map((item) => <button type="button" key={item} aria-pressed={category === item} className={`filter-chip ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)}>{item}</button>)}<span className="filter-count" aria-live="polite">{filtered.length} / {sectionTrackers.length}</span></div>
-      {filtered.length ? section === 'archived' ? <div className="tracker-grid">{filtered.map((tracker) => <article className="tracker-card archived-tracker" key={tracker.id}><span className="scope-badge">{i18n.resolvedLanguage?.startsWith('en') ? 'Archived' : 'Archivado'}</span><h3>{tracker.name}</h3><p className="tracker-desc">{tracker.description}</p><div className="tracker-actions"><button type="button" onClick={() => { void db.trackers.put({ ...tracker, archived: false }); }}>{i18n.resolvedLanguage?.startsWith('en') ? 'Restore' : 'Recuperar'}</button><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></article>)}</div> : <div className="tracker-grid">{filtered.map((tracker) => <div className="tracker-wrap" key={tracker.id}><TrackerCard tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} /><div className="tracker-actions"><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></div>)}</div> : <EmptyCard icon={<Gauge size={21} />} title={t('noTrackers')} body={section === 'none' ? t('noUnresetTrackers') : t('noTrackersDesc')} action={t('addTracker')} onClick={onAdd} />}
+      <div className="filters-row" role="group" aria-label={t('filterCategory')}><span className="filter-label">{t('filterCategory')}</span><button type="button" aria-pressed={category === 'all'} className={`filter-chip ${category === 'all' ? 'selected' : ''}`} onClick={() => setCategory('all')}>{t('all')}</button>{categories.map((item) => <button type="button" key={item} aria-pressed={category === item} className={`filter-chip ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)}>{trackerCopy(sectionTrackers.find((tracker) => tracker.category === item)!, language).category}</button>)}<span className="filter-count" aria-live="polite">{filtered.length} / {sectionTrackers.length}</span></div>
+      {filtered.length ? section === 'archived' ? <div className="tracker-grid">{filtered.map((tracker) => { const copy = trackerCopy(tracker, language); return <article className="tracker-card archived-tracker" key={tracker.id}><span className="scope-badge">{t('archived')}</span><h3>{copy.name}</h3><p className="tracker-desc">{copy.description}</p><div className="tracker-actions"><button type="button" onClick={() => { void db.trackers.put({ ...tracker, archived: false }); }}>{t('restore')}</button><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></article>; })}</div> : <div className="tracker-grid">{filtered.map((tracker) => <div className="tracker-wrap" key={tracker.id}><TrackerCard tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} /><div className="tracker-actions"><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></div>)}</div> : <EmptyCard icon={<Gauge size={21} />} title={t('noTrackers')} body={section === 'none' ? t('noUnresetTrackers') : t('noTrackersDesc')} action={t('addTracker')} onClick={onAdd} />}
     </div>
     {sections.filter((item) => item.id !== section).map((item) => <div key={item.id} id={`trackers-panel-${item.id}`} role="tabpanel" aria-labelledby={`trackers-tab-${item.id}`} hidden />)}
   </>;
@@ -522,7 +530,7 @@ function CharactersPage({ characters, activeId, onAdd, onEdit, onDelete, onSelec
   const t = useLocale();
   return <>
     <PageHeading eyebrow={t('recordProgress')} title={t('characters')} action={t('addCharacter')} onAction={onAdd} />
-    {!characters.length ? <EmptyCard icon={<Users size={21} />} title={t('noCharacters')} body={t('noCharactersDesc')} action={t('addCharacter')} onClick={onAdd} /> : <div className="character-grid">{characters.map((character) => <article key={character.id} className={`character-card ${activeId === character.id ? 'chosen' : ''}`}><div className="character-top"><div className="avatar-mark">{character.name.slice(0, 1).toUpperCase()}</div><button className="micro-action" aria-label={`${t('edit')} ${character.name}`} onClick={() => onEdit(character)}>···</button></div><h3>{character.name}</h3><p>{character.className || t('classPlaceholder')}</p><div className="character-tags"><span>{regionName(character.region, t)}</span><span>{character.server || t('unknown')}</span></div><div className="character-card-actions"><button className="button button-secondary" onClick={() => onSelect(character.id)}>{activeId === character.id ? <><Check size={15} />{t('completed')}</> : t('selectCharacter')}</button><button className="icon-button danger" aria-label={`${t('delete')} ${character.name}`} onClick={() => onDelete(character)}><Trash2 size={15} /></button></div></article>)}</div>}
+    {!characters.length ? <EmptyCard icon={<Users size={21} />} title={t('noCharacters')} body={t('noCharactersDesc')} action={t('addCharacter')} onClick={onAdd} /> : <div className="character-grid">{characters.map((character) => <article key={character.id} className={`character-card ${activeId === character.id ? 'chosen' : ''}`}><div className="character-top"><div className="avatar-mark">{character.name.slice(0, 1).toUpperCase()}</div><button className="micro-action" aria-label={`${t('edit')} ${character.name}`} onClick={() => onEdit(character)}>···</button></div><h3>{character.name}</h3><p>{character.className || t('classPlaceholder')}</p><div className="character-tags"><span>{regionName(character.region, t)}</span><span>{character.server || t('unknown')}</span></div><div className="character-card-actions"><button className="button button-secondary" onClick={() => onSelect(character.id)}>{activeId === character.id ? <><Check size={15} />{t('selectedCharacter')}</> : t('selectCharacter')}</button><button className="icon-button danger" aria-label={`${t('delete')} ${character.name}`} onClick={() => onDelete(character)}><Trash2 size={15} /></button></div></article>)}</div>}
   </>;
 }
 
@@ -532,8 +540,8 @@ function SourcesPage() {
     <PageHeading eyebrow={t('officialOnly')} title={t('sourceTitle')} />
     <div className="notice-card"><div className="notice-icon"><ShieldCheck size={20} /></div><div><h2>{t('noOfficialRules')}</h2><p>{t('noOfficialRulesDesc')}</p></div><span className="pending-pill">{t('pending')}</span></div>
     <div className="sources-heading"><h2>{t('sources')}</h2><span>{sourceRecords.filter((source) => source.type === 'official').length} {t('official').toLocaleLowerCase()} · {sourceRecords.filter((source) => source.type === 'community').length} {t('community').toLocaleLowerCase()}</span></div>
-    <div className="source-list">{sourceRecords.map((source) => { const english = i18n.resolvedLanguage?.startsWith('en'); return <article className="source-item" key={source.id}><span className={`source-kind ${source.type}`}>{source.type === 'official' ? 'NC' : t('community').toLocaleUpperCase()}</span><div className="source-copy"><div className="source-title-line"><h3>{source.title}</h3><span className={`source-status ${source.status}`}>{source.status === 'official-publication' ? t('statusOfficial') : source.status === 'internal-undocumented' ? t('statusInternal') : t('statusCommunity')}</span></div><p>{english ? source.noteEn : source.note}</p><small>{t('region')}: {english ? source.regionEn : source.region} · {t('scope')}: {english ? source.scopeEn : source.scope}</small><small className="source-validity">{t('validity')}: {english ? source.validityEn : source.validity} · {t('reviewed')} {source.reviewed}</small></div><a className="icon-button" href={source.url} target="_blank" rel="noreferrer" aria-label={`${t('open')} ${source.title}`}>↗</a></article>; })}</div>
-    <div className="footnote-card"><Clock3 size={17} /><p><b>{t('noRulesTitle')}.</b> {t('nextReset')}. Los reinicios diarios/semanales que configures solo organizan tus registros locales y respetan el calendario y la hora local del dispositivo.</p></div>
+    <div className="source-list">{sourceRecords.map((source) => { const english = i18n.resolvedLanguage?.startsWith('en'); const title = english ? source.titleEn : source.title; return <article className="source-item" key={source.id}><span className={`source-kind ${source.type}`}>{source.type === 'official' ? 'NC' : t('community').toLocaleUpperCase()}</span><div className="source-copy"><div className="source-title-line"><h3>{title}</h3><span className={`source-status ${source.status}`}>{source.status === 'official-publication' ? t('statusOfficial') : source.status === 'internal-undocumented' ? t('statusInternal') : t('statusCommunity')}</span></div><p>{english ? source.noteEn : source.note}</p><small>{t('region')}: {english ? source.regionEn : source.region} · {t('scope')}: {english ? source.scopeEn : source.scope}</small><small className="source-validity">{t('validity')}: {english ? source.validityEn : source.validity} · {t('reviewed')} {source.reviewed}</small></div><a className="icon-button" href={source.url} target="_blank" rel="noreferrer" aria-label={`${t('open')} ${title}`}>↗</a></article>; })}</div>
+    <div className="footnote-card"><Clock3 size={17} /><p><b>{t('noRulesTitle')}.</b> {t('nextReset')}. {t('configuredResetFootnote')}</p></div>
   </>;
 }
 
@@ -569,7 +577,7 @@ function CharacterDialog({ initial, onClose, onSaved }: { initial: Character | n
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   return <Modal title={initial ? t('edit') : t('addCharacter')} onClose={onClose}><form onSubmit={(event) => void submit(event)} className="form-grid">
     <label className="field full"><span>{t('name')} *</span><input autoFocus maxLength={60} value={form.name} onChange={(event) => set('name', event.target.value)} required /></label>
-    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: 'Global' }, { value: 'korea', label: 'Corea' }, { value: 'taiwan', label: 'Taiwán' }, { value: 'unknown', label: t('unknown') }]} /></label>
+    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: t('global') }, { value: 'korea', label: t('korea') }, { value: 'taiwan', label: t('taiwan') }, { value: 'unknown', label: t('unknown') }]} /></label>
     <label className="field"><span>{t('server')}</span><input maxLength={60} value={form.server} onChange={(event) => set('server', event.target.value)} /></label>
     <label className="field full"><span>{t('className')}</span><input maxLength={40} placeholder={t('classPlaceholder')} value={form.className} onChange={(event) => set('className', event.target.value)} /></label>
     {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
@@ -595,9 +603,9 @@ function TrackerDialog({ initial, onClose, onSaved }: { initial: Tracker | null;
     <label className="field"><span>{t('category')}</span><input maxLength={40} placeholder={t('categoryPlaceholder')} value={form.category} onChange={(event) => set('category', event.target.value)} required /></label>
     <label className="field"><span>{t('limit')}</span><input type="number" min={1} max={999} value={form.limit} onChange={(event) => set('limit', Number(event.target.value))} required /></label>
     <label className="field"><span>{t('scope')}</span><NeoSelect value={form.scope} onChange={(value) => set('scope', String(value))} options={[{ value: 'character', label: t('scopeCharacter') }, { value: 'server', label: t('scopeServer') }, { value: 'account', label: t('scopeAccount') }]} /></label>
-    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: 'Global' }, { value: 'korea', label: 'Corea' }, { value: 'taiwan', label: 'Taiwán' }, { value: 'unknown', label: t('unknown') }]} /></label>
+    <label className="field"><span>{t('region')}</span><NeoSelect value={form.region} onChange={(value) => set('region', String(value))} options={[{ value: 'global', label: t('global') }, { value: 'korea', label: t('korea') }, { value: 'taiwan', label: t('taiwan') }, { value: 'unknown', label: t('unknown') }]} /></label>
     <label className="field full"><span>{t('reset')}</span><NeoSelect value={form.frequency} onChange={(value) => set('frequency', String(value))} options={[{ value: 'none', label: t('noReset') }, { value: 'daily', label: t('dailyReset') }, { value: 'weekly', label: t('weeklyReset') }]} /></label>
-    {form.frequency !== 'none' && <><label className="field"><span>{t('resetTime')}</span><input type="time" value={form.resetTime} onChange={(event) => set('resetTime', event.target.value)} /></label>{form.frequency === 'weekly' && <label className="field"><span>{t('resetDay')}</span><NeoSelect value={form.resetWeekday} onChange={(value) => set('resetWeekday', Number(value))} options={weekdays.map((day, i) => ({ value: i, label: t(day) }))} /></label>}<p className="field-help full">Estos límites y horarios son preferencias personales para organizar el registro. La aplicación no los presenta como reglas oficiales del juego.</p></>}
+    {form.frequency !== 'none' && <><label className="field"><span>{t('resetTime')}</span><input type="time" value={form.resetTime} onChange={(event) => set('resetTime', event.target.value)} /></label>{form.frequency === 'weekly' && <label className="field"><span>{t('resetDay')}</span><NeoSelect value={form.resetWeekday} onChange={(value) => set('resetWeekday', Number(value))} options={weekdays.map((day, i) => ({ value: i, label: t(day) }))} /></label>}<p className="field-help full">{t('trackerResetDisclaimer')}</p></>}
     {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
   </form></Modal>;
 }

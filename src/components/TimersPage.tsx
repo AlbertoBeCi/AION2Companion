@@ -8,11 +8,11 @@ import { fetchGartuaFeed, gartuaFeedServers, isSupportedGartuaServer, type Gartu
 import { NeoSelect } from './NeoSelect';
 
 const serverZones = [
-  { value: 'Europe/Berlin', label: 'Europe · Berlin' },
-  { value: 'America/New_York', label: 'NA East · New York' },
-  { value: 'America/Los_Angeles', label: 'NA West · Los Angeles' },
-  { value: 'America/Sao_Paulo', label: 'South America · São Paulo' },
-  { value: 'Asia/Seoul', label: 'Asia · Seoul' },
+  { value: 'Europe/Berlin', labelKey: 'timezoneEurope' },
+  { value: 'America/New_York', labelKey: 'timezoneNaEast' },
+  { value: 'America/Los_Angeles', labelKey: 'timezoneNaWest' },
+  { value: 'America/Sao_Paulo', labelKey: 'timezoneSouthAmerica' },
+  { value: 'Asia/Seoul', labelKey: 'timezoneAsia' },
 ];
 const weekdayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const soundAlertsStorageKey = 'aion2-timer-sound-alerts';
@@ -69,6 +69,7 @@ function countdown(target: Date, now: Date): string {
 
 export function TimersPage() {
   const { t, i18n } = useTranslation();
+  const zoneOptions = serverZones.map((zone) => ({ value: zone.value, label: t(zone.labelKey) }));
   const [now, setNow] = useState(() => new Date());
   const [timeZone, setTimeZone] = useState(readZone);
   const [soundAlerts, setSoundAlerts] = useState(readSoundAlerts);
@@ -185,7 +186,7 @@ export function TimersPage() {
   }
 
   return <>
-    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><label className="server-zone-picker"><span>{t('serverTimeZone')}</span><NeoSelect ariaLabel={t('serverTimeZone')} value={timeZone} onChange={(value) => changeZone(String(value))} options={serverZones} /></label></section>
+    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><label className="server-zone-picker"><span>{t('serverTimeZone')}</span><NeoSelect ariaLabel={t('serverTimeZone')} value={timeZone} onChange={(value) => changeZone(String(value))} options={zoneOptions} /></label></section>
 
     <section className="weekly-reset-card">
       <div className="weekly-reset-art"><CalendarClock size={22} /></div>
