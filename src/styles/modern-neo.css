@@ -532,3 +532,24 @@ input,select,textarea { font-family: var(--font-body); font-size: var(--fs-base)
   .header-timer-copy small { max-width: 35px; }
   .top-actions .icon-button { min-width: 36px; width: 36px; height: 36px; min-height: 36px; }
 }
+
+@media (min-width: 821px) and (max-width: 1120px) {
+  .sidebar {
+    display: grid;
+    height: auto;
+    min-height: 0;
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-areas: "brand timers" "nav actions";
+    align-items: center;
+    gap: 8px 12px;
+    padding: 8px 16px;
+  }
+  .brand { grid-area: brand; width: 115px; }
+  .reset-ticker { grid-area: timers; order: initial; display: flex; min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: 8px; margin: 0; }
+  .game-clock { display: none; }
+  .header-timer { min-width: 0; flex: 1 1 0; }
+  .header-timer-copy { min-width: 0; }
+  .header-timer-copy small { max-width: 100%; }
+  .main-nav { grid-area: nav; order: initial; width: auto; min-width: 0; flex: 0 1 auto; justify-content: flex-start; gap: 8px; margin: 0; padding: 0; }
+  .top-actions { grid-area: actions; order: initial; flex: 0 0 auto; justify-self: end; }
+}
