@@ -1,5 +1,7 @@
 # AION 2 Companion
 
+![AION 2 Companion — Track, Plan, Play](docs/assets/aion2-companion-banner.png)
+
 **A local-first companion for tracking AION 2 activities, timers and progress.** The app works without a game account, and creating characters or selecting a server is optional for personal counters.
 
 > This is an independent, community project. It is not affiliated with or endorsed by NCSOFT.
