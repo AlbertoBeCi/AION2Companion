@@ -223,7 +223,7 @@ body { font-size: 15px; line-height: 1.55; }
 @keyframes tracker-firework { 0% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--firework-angle)) translateX(0) scale(.25); } 18% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--firework-angle)) translateX(var(--firework-distance)) scale(.15); } }
 @media (prefers-reduced-motion: reduce) { .tracker-celebration { display: none; } }
 
-/* Compact, game-focused layout inspired by Kalandra's all-in-one tracker. */
+/* Compact, game-focused tracker layout. */
 :root {
   --bg: #111416;
   --sidebar: #15191b;
@@ -452,8 +452,8 @@ body { font-size: 16px; line-height: 1.6; }
 .row-scope { font-size: 10px; }
 .row-progress>b { font-size: 13px; }
 .row-actions button { width: 32px; height: 32px; }
-.kalandra-row { min-height: 72px; }
-.kalandra-empty { font-size: 14px; line-height: 1.5; }
+.companion-row { min-height: 72px; }
+.companion-empty { font-size: 14px; line-height: 1.5; }
 .roster-button,.add-list-item { font-size: 13px; }
 .schedule-title h3 { font-size: 14px; }
 .schedule-kind,.live-status { font-size: 11px; }
@@ -563,8 +563,8 @@ body { font-size: 23px; }
 .row-scope { font-size: 17px; }
 .row-progress>b { font-size: 20px; }
 .row-actions button { width: 40px; height: 40px; }
-.kalandra-row { min-height: 96px; padding-top: 12px; padding-bottom: 12px; }
-.kalandra-empty { font-size: 20px; }
+.companion-row { min-height: 96px; padding-top: 12px; padding-bottom: 12px; }
+.companion-empty { font-size: 20px; }
 .schedule-title h3 { font-size: 21px; }
 .schedule-kind,.live-status { font-size: 17px; }
 .schedule-main p,.schedule-main small { font-size: 19px; white-space: normal; }
@@ -587,7 +587,7 @@ body { font-size: 23px; }
 @media (max-width: 820px) {
   .page-heading h1,.hero-row h1 { font-size: 36px; }
   .overview-copy h1 { font-size: 29px; }
-  .kalandra-lists { grid-template-columns: minmax(0,1fr); }
+  .companion-lists { grid-template-columns: minmax(0,1fr); }
 }
 @media (max-width: 560px) {
   .page-heading h1,.hero-row h1 { font-size: 34px; }
@@ -615,7 +615,7 @@ body { font-size: 23px; }
   .setting-row b,.setting-row small,.setting-row>select { font-size: 16px; }
   .field>span,.field input,.field select,.field-help,.form-error { font-size: 17px; }
   .button,.tracker-actions button { min-height: 44px; font-size: 17px; }
-  .kalandra-row { grid-template-columns: 30px minmax(0,1fr) auto; gap: 8px; }
+  .companion-row { grid-template-columns: 30px minmax(0,1fr) auto; gap: 8px; }
   .row-check { width: 28px; height: 28px; }
   .row-copy { grid-column: 2; }
   .row-progress { grid-column: 2; grid-row: 2; }
@@ -627,7 +627,7 @@ body { font-size: 23px; }
   .header-timer { padding-right: 3px; padding-left: 3px; }
 }
 
-/* Kalandra-inspired purple and gold home board. */
+/* Purple-and-gold dashboard palette. */
 :root {
   --bg: #100b19;
   --sidebar: #100c18;
@@ -667,8 +667,8 @@ body { background-color: var(--bg); background-image: radial-gradient(ellipse at
 .character-select select { color: #e8dfed; }
 .main-area { min-height: calc(100vh - 65px); }
 .page-wrap { width: min(100%, 1400px); padding: 22px 28px 55px; }
-.kalandra-home { display: grid; gap: 14px; }
-.kalandra-overview { display: grid; grid-template-columns: minmax(285px,1fr) minmax(290px,1.08fr) minmax(235px,.9fr); align-items: center; gap: 24px; min-height: 170px; padding: 20px 28px; border: 1px solid #3c2b4b; border-radius: 10px; background: linear-gradient(110deg, rgb(24 13 35 / 96%), rgb(26 13 37 / 93%)); box-shadow: 0 12px 45px rgb(3 1 8 / 22%); }
+.companion-home { display: grid; gap: 14px; }
+.companion-overview { display: grid; grid-template-columns: minmax(285px,1fr) minmax(290px,1.08fr) minmax(235px,.9fr); align-items: center; gap: 24px; min-height: 170px; padding: 20px 28px; border: 1px solid #3c2b4b; border-radius: 10px; background: linear-gradient(110deg, rgb(24 13 35 / 96%), rgb(26 13 37 / 93%)); box-shadow: 0 12px 45px rgb(3 1 8 / 22%); }
 .overview-total { display: flex; align-items: center; gap: 23px; min-width: 0; }
 .overview-ring { display: flex; width: 112px; height: 112px; flex: none; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 50%; position: relative; color: #fff8e9; font-variant-numeric: tabular-nums; }
 .overview-ring::before { position: absolute; inset: 7px; border: 1px solid #17101f; border-radius: inherit; background: #1c1028; content: ''; }
@@ -694,7 +694,7 @@ body { background-color: var(--bg); background-image: radial-gradient(ellipse at
 .overview-stats>div { display: flex; min-height: 37px; align-items: center; gap: 9px; padding: 6px 10px; border: 1px solid #392b47; border-radius: 6px; background: rgb(13 8 20 / 42%); color: #e8b83f; }
 .overview-stats b { color: #f1ebf5; font-size: 14px; font-variant-numeric: tabular-nums; }
 .overview-stats span { color: #b3a6bd; font-size: 10px; }
-.kalandra-character-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; }
+.companion-character-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 50px; }
 .character-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .character-chip { display: flex; min-width: 195px; align-items: center; gap: 8px; padding: 5px 9px; border: 1px solid #44304e; border-radius: 7px; background: #1b1027; color: var(--text); text-align: left; }
 button.character-chip { cursor: pointer; }
@@ -705,7 +705,7 @@ button.character-chip { cursor: pointer; }
 .character-chip small { overflow: hidden; color: #ad9fb8; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .character-chip strong { display: grid; width: 27px; height: 27px; flex: none; place-items: center; margin-left: auto; border: 1px solid #584767; border-radius: 50%; color: #eee7f2; font-size: 9px; }
 .roster-button { min-height: 35px; }
-.kalandra-lists { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 14px; }
+.companion-lists { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 14px; }
 .checklist-panel { min-width: 0; padding: 12px; border: 1px solid #3e2c4e; border-radius: 9px; background: rgb(24 13 36 / 96%); box-shadow: 0 10px 34px rgb(2 1 7 / 19%); }
 .checklist-panel-head { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; padding-bottom: 9px; border-bottom: 1px solid #3a2b48; }
 .checklist-panel-head>div:first-child { display: flex; min-width: 0; align-items: center; gap: 8px; }
@@ -716,12 +716,12 @@ button.character-chip { cursor: pointer; }
 .panel-tools select,.panel-tools button { height: 31px; padding: 0 8px; border: 1px solid #493652; border-radius: 5px; background: #180f22; color: #ded5e5; font-size: 9px; }
 .panel-tools button { display: inline-flex; align-items: center; gap: 4px; }
 .panel-tools .complete-all { border-color: #d9ae43; background: linear-gradient(#f4d26a,#d6a736); color: #21170a; font-weight: 700; }
-.kalandra-list { display: grid; gap: 6px; }
-.kalandra-row { position: relative; display: grid; grid-template-columns: 27px minmax(0,1fr) minmax(90px,auto) auto; align-items: center; gap: 9px; min-height: 63px; padding: 8px 9px; overflow: hidden; border: 1px solid #3f2e4e; border-radius: 6px; background: linear-gradient(100deg,#20122f,#1c1129); transition: border-color .2s ease, background .2s ease; }
-.kalandra-row.is-complete { border-color: #438c62; background: linear-gradient(100deg,#17271f,#1c1827); }
-.kalandra-row.celebrating { animation: tracker-complete-glow 1.4s ease-out; }
+.companion-list { display: grid; gap: 6px; }
+.companion-row { position: relative; display: grid; grid-template-columns: 27px minmax(0,1fr) minmax(90px,auto) auto; align-items: center; gap: 9px; min-height: 63px; padding: 8px 9px; overflow: hidden; border: 1px solid #3f2e4e; border-radius: 6px; background: linear-gradient(100deg,#20122f,#1c1129); transition: border-color .2s ease, background .2s ease; }
+.companion-row.is-complete { border-color: #438c62; background: linear-gradient(100deg,#17271f,#1c1827); }
+.companion-row.celebrating { animation: tracker-complete-glow 1.4s ease-out; }
 .row-check { display: grid; width: 25px; height: 25px; place-items: center; border: 1px solid #51435c; border-radius: 6px; background: #120c1c; color: #f6d46c; }
-.kalandra-row.is-complete .row-check { border-color: #67bb86; background: #284b35; color: #bdf3c7; }
+.companion-row.is-complete .row-check { border-color: #67bb86; background: #284b35; color: #bdf3c7; }
 .row-copy { min-width: 0; }
 .row-title-line { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .row-title-line h3 { overflow: hidden; margin: 0; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -738,8 +738,8 @@ button.character-chip { cursor: pointer; }
 .row-actions button { display: grid; width: 24px; height: 26px; place-items: center; border: 0; border-radius: 4px; background: transparent; color: #aa9db5; }
 .row-actions button:hover { background: #332341; color: #f1d27b; }
 .add-list-item { display: inline-flex; align-items: center; gap: 5px; margin: 8px 0 0; padding: 4px; border: 0; background: transparent; color: #c7b8d0; font-size: 10px; }
-.kalandra-empty { padding: 17px 8px; color: #ab9bb7; font-size: 11px; }
-.kalandra-empty button { margin-left: 7px; border: 0; background: none; color: #edc95c; }
+.companion-empty { padding: 17px 8px; color: #ab9bb7; font-size: 11px; }
+.companion-empty button { margin-left: 7px; border: 0; background: none; color: #edc95c; }
 .tracker-celebration { z-index: 2; }
 
 /* Keep every non-timer section on the same reading scale as the timer cards. */
@@ -777,7 +777,7 @@ button.character-chip { cursor: pointer; }
   .brand { width: 115px; }
   .game-clock { display: none; }
   .header-timer { min-width: 96px; padding: 4px 6px; }
-  .kalandra-overview { grid-template-columns: minmax(250px,1fr) minmax(240px,1fr); }
+  .companion-overview { grid-template-columns: minmax(250px,1fr) minmax(240px,1fr); }
   .overview-stats { grid-column: 1 / -1; grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
 @media (max-width: 820px) {
@@ -791,9 +791,9 @@ button.character-chip { cursor: pointer; }
   .header-timer-copy b { font-size: 10px; }
   .top-actions { gap: 4px; }
   .character-select { max-width: 130px; }
-  .kalandra-overview { grid-template-columns: 1fr 1fr; padding: 16px; }
+  .companion-overview { grid-template-columns: 1fr 1fr; padding: 16px; }
   .overview-stats { grid-template-columns: 1fr; }
-  .kalandra-lists { grid-template-columns: minmax(0,1fr); }
+  .companion-lists { grid-template-columns: minmax(0,1fr); }
 }
 @media (max-width: 560px) {
   .sidebar { position: sticky; top: 0; min-height: 56px; flex-wrap: nowrap; gap: 5px; padding: 5px 8px; }
@@ -812,7 +812,7 @@ button.character-chip { cursor: pointer; }
   .top-actions .icon-button { min-width: 28px; width: 28px; height: 28px; }
   .lang-short { display: none; }
   .page-wrap { padding: 12px 9px 86px; }
-  .kalandra-overview { grid-template-columns: 1fr; gap: 13px; padding: 14px; }
+  .companion-overview { grid-template-columns: 1fr; gap: 13px; padding: 14px; }
   .overview-total { gap: 14px; }
   .overview-ring { width: 82px; height: 82px; }
   .overview-ring::before { inset: 6px; }
@@ -823,7 +823,7 @@ button.character-chip { cursor: pointer; }
   .overview-stats>div svg { width: 12px; }
   .overview-stats b { font-size: 10px; }
   .overview-stats span { width: 100%; font-size: 7px; }
-  .kalandra-character-strip { align-items: flex-start; }
+  .companion-character-strip { align-items: flex-start; }
   .character-chip { min-width: 0; flex: 1; }
   .roster-button { width: 36px; min-width: 36px; overflow: hidden; gap: 30px; padding: 0 9px; }
   .roster-button svg { flex: none; }
@@ -832,7 +832,7 @@ button.character-chip { cursor: pointer; }
   .checklist-panel-head>div:first-child { flex: 1 0 100%; }
   .panel-tools { width: 100%; }
   .panel-tools select { flex: 1; }
-  .kalandra-row { grid-template-columns: 23px minmax(0,1fr) auto; gap: 6px; padding: 7px 6px; }
+  .companion-row { grid-template-columns: 23px minmax(0,1fr) auto; gap: 6px; padding: 7px 6px; }
   .row-check { width: 22px; height: 22px; }
   .row-copy { grid-column: 2; }
   .row-progress { grid-column: 2; grid-row: 2; justify-content: flex-start; }

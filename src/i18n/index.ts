@@ -3,7 +3,7 @@ import { initReactI18next } from 'react-i18next';
 
 const resources = {
   es: { translation: {
-    brand: 'AION 2 COMPANION', eyebrow: 'PANEL DE OPERACIONES', dashboard: 'Resumen', trackers: 'Contadores', timers: 'Temporizadores', characters: 'Personajes', sources: 'Fuentes', settings: 'Ajustes',
+    brand: 'AION2COMPANION', eyebrow: 'PANEL DE OPERACIONES', dashboard: 'Resumen', trackers: 'Contadores', timers: 'Temporizadores', characters: 'Personajes', sources: 'Fuentes', settings: 'Ajustes',
     home: 'Ir al resumen', mainNavigation: 'Navegación principal', skipToContent: 'Saltar al contenido', summaryMetrics: 'Resumen de actividad', of: 'de', timeRemaining: 'Tiempo restante', conquest: 'Conquista', conquestDescription: 'Contador general de seguimiento diario. Objetivo: 2; algunas modalidades del juego pueden mantener cargas separadas.',
     greeting: 'Tu progreso, a tu manera.', subtitle: 'Seguimiento manual y privado. Los valores que escribas aquí se guardan en este dispositivo.',
     charactersLabel: 'Personajes', trackersLabel: 'Contadores', done: 'Completado', today: 'Hoy', weekly: 'Semanal', activity: 'Actividad registrada',
@@ -38,14 +38,14 @@ const resources = {
     importMode: 'Al importar', merge: 'Añadir y actualizar por identificador', replace: 'Reemplazar los datos locales', chooseFile: 'Elegir archivo JSON', resetData: 'Borrar datos seleccionados',
     resetTrackers: 'Borrar contadores y progreso', resetCharacters: 'Borrar personajes', resetAll: 'Borrar todos los datos', confirmDelete: '¿Eliminar este elemento?',
     edit: 'Editar', delete: 'Eliminar', noDescription: 'Sin descripción', saved: 'Guardado en este dispositivo', imported: 'Copia importada', exported: 'Copia exportada',
-    invalidFile: 'El archivo no es una copia válida de AION 2 Companion.', completed: 'Completado', complete: 'Completar', increase: 'Aumentar progreso', decrease: 'Reducir progreso',
+    invalidFile: 'El archivo no es una copia válida de AION2Companion.', completed: 'Completado', complete: 'Completar', increase: 'Aumentar progreso', decrease: 'Reducir progreso',
     all: 'Todos', filterCategory: 'Categoría', sourceLink: 'Abrir fuente', noOfficialData: 'Sin regla confirmada', serverRequired: 'Añade un servidor para contadores por servidor.',
     thursday: 'Jueves', sunday: 'Domingo', monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles', friday: 'Viernes', saturday: 'Sábado',
     projectNotice: 'Proyecto comunitario no oficial. AION 2 y NC son marcas de sus propietarios.', back: 'Volver al resumen', noRulesTitle: 'Sin horarios preconfigurados',
     nextReset: 'Siguiente reinicio local configurado', open: 'Abrir', classPlaceholder: 'Opcional', categoryPlaceholder: 'p. ej. mazmorra', close: 'Cerrar', official: 'Oficial', community: 'Comunidad', validity: 'Vigencia', reviewed: 'Revisado', deleteWarning: 'Esta acción requiere confirmación y no se puede deshacer.', maxFile: 'Máximo 5 MB', schemaVersion: 'JSON · esquema 1', characterError: 'Revisa el nombre y los campos (máximo 60 caracteres).', trackerError: 'Comprueba los campos y el límite (1–999).', offlineReady: 'La aplicación está lista para abrirse sin conexión.', updateReady: 'Hay una versión nueva disponible.', appUpdate: 'Estado de actualización de la aplicación', update: 'Actualizar', dismiss: 'Ahora no',
   } },
   en: { translation: {
-    brand: 'AION 2 COMPANION', eyebrow: 'OPERATIONS CENTER', dashboard: 'Overview', trackers: 'Trackers', timers: 'Timers', characters: 'Characters', sources: 'Sources', settings: 'Settings',
+    brand: 'AION2COMPANION', eyebrow: 'OPERATIONS CENTER', dashboard: 'Overview', trackers: 'Trackers', timers: 'Timers', characters: 'Characters', sources: 'Sources', settings: 'Settings',
     home: 'Go to overview', mainNavigation: 'Main navigation', skipToContent: 'Skip to content', summaryMetrics: 'Activity summary', of: 'of', timeRemaining: 'Time remaining', conquest: 'Conquest', conquestDescription: 'General daily tracker. Target: 2; some game modes may keep separate entries.',
     greeting: 'Your progress, your way.', subtitle: 'Manual and private tracking. Values you enter here stay on this device.',
     charactersLabel: 'Characters', trackersLabel: 'Trackers', done: 'Completed', today: 'Today', weekly: 'Weekly', activity: 'Recorded activity',
@@ -80,7 +80,7 @@ const resources = {
     importMode: 'When importing', merge: 'Add and update by identifier', replace: 'Replace local data', chooseFile: 'Choose JSON file', resetData: 'Delete selected data',
     resetTrackers: 'Delete trackers and progress', resetCharacters: 'Delete characters', resetAll: 'Delete all data', confirmDelete: 'Delete this item?',
     edit: 'Edit', delete: 'Delete', noDescription: 'No description', saved: 'Saved on this device', imported: 'Backup imported', exported: 'Backup exported',
-    invalidFile: 'This is not a valid AION 2 Companion backup.', completed: 'Completed', complete: 'Complete', increase: 'Increase progress', decrease: 'Decrease progress',
+    invalidFile: 'This is not a valid AION2Companion backup.', completed: 'Completed', complete: 'Complete', increase: 'Increase progress', decrease: 'Decrease progress',
     all: 'All', filterCategory: 'Category', sourceLink: 'Open source', noOfficialData: 'No confirmed rule', serverRequired: 'Add a server for server-scoped trackers.',
     thursday: 'Thursday', sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', friday: 'Friday', saturday: 'Saturday',
     projectNotice: 'Unofficial community project. AION 2 and NC are trademarks of their respective owners.', back: 'Back to overview', noRulesTitle: 'No preset schedules',

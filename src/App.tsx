@@ -64,7 +64,7 @@ function App() {
   }, [preferences.language, preferences.theme]);
 
   useEffect(() => {
-    document.title = `${t(pageTitleKey[page])} · AION 2 Companion`;
+    document.title = `${t(pageTitleKey[page])} · AION2Companion`;
   }, [page, preferences.language, t]);
 
   useEffect(() => { void seedGlobalChecklists(); }, []);
@@ -157,7 +157,7 @@ function App() {
   return <div className={`app-shell ${preferences.compact ? 'is-compact' : ''}`}>
     <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
     <header className="sidebar">
-      <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION 2</b><small>COMPANION</small></span></button>
+      <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION2</b><small>COMPANION</small></span></button>
       <div className="sidebar-caption">{t('eyebrow')}</div>
       <nav aria-label={t('mainNavigation')} className="main-nav">
         {(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => {
@@ -198,9 +198,17 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   const weekly = trackers.find((tracker) => !tracker.archived && tracker.frequency === 'weekly');
   const dailyAt = nextReset('daily', daily?.resetTime ?? '16:00', daily?.resetWeekday ?? 3, now, daily?.resetTimeZone ?? 'Asia/Seoul');
   const weeklyAt = nextReset('weekly', weekly?.resetTime ?? '16:00', weekly?.resetWeekday ?? 3, now, weekly?.resetTimeZone ?? 'Asia/Seoul');
+  const dailyFrom = nextReset('daily', daily?.resetTime ?? '16:00', daily?.resetWeekday ?? 3, new Date(now.getTime() - 25 * 60 * 60 * 1000), daily?.resetTimeZone ?? 'Asia/Seoul');
+  const weeklyFrom = nextReset('weekly', weekly?.resetTime ?? '16:00', weekly?.resetWeekday ?? 3, new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000), weekly?.resetTimeZone ?? 'Asia/Seoul');
   const rift = globalSchedules.find((schedule) => schedule.id === 'spacetime-rift');
   const riftZone = localStorage.getItem('aion2-timer-server-zone') || 'Europe/Berlin';
   const riftAt = rift ? nextScheduleOccurrence(rift, now, riftZone) : null;
+  const riftFrom = rift ? nextScheduleOccurrence(rift, new Date(now.getTime() - 4 * 60 * 60 * 1000), riftZone) : null;
+  const remainingFraction = (target: Date | null, start: Date | null) => {
+    if (!target || !start) return 0;
+    const duration = target.getTime() - start.getTime();
+    return duration > 0 ? Math.max(0, Math.min(1, (target.getTime() - now.getTime()) / duration)) : 0;
+  };
   const countdown = (date: Date | null) => {
     if (!date) return '—';
     const seconds = Math.max(0, Math.floor((date.getTime() - now.getTime()) / 1000));
@@ -215,13 +223,13 @@ function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'e
   const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weekly?.resetTimeZone ?? 'Asia/Seoul' }).format(weeklyAt).toUpperCase() : '';
   const riftTime = riftAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: riftZone }).format(riftAt) : '';
   const clock = new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
-  const timer = (kind: string, label: string, time: string, target: Date | null) => <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" aria-hidden="true" /><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
+  const timer = (kind: string, label: string, time: string, target: Date | null, start: Date | null) => <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" style={{ '--timer-progress': `${remainingFraction(target, start) * 360}deg` } as React.CSSProperties} aria-hidden="true" /><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
 
   return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
     <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
-    {timer('daily', dailyLabel, daily?.resetTime ?? '16:00', dailyAt)}
-    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'}`, weeklyAt)}
-    {timer('rift', 'Rift', riftTime || '—', riftAt)}
+    {timer('daily', dailyLabel, daily?.resetTime ?? '16:00', dailyAt, dailyFrom)}
+    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'}`, weeklyAt, weeklyFrom)}
+    {timer('rift', 'Rift', riftTime || '—', riftAt, riftFrom)}
   </div>;
 }
 
@@ -249,19 +257,19 @@ function Dashboard({ trackers, characters, progress, active, onProgress, onAddTr
     return items.length ? Math.round(complete / items.length * 100) : 0;
   };
   const welcome = remaining === 0 ? (i18n.resolvedLanguage?.startsWith('en') ? 'All done!' : '¡Todo listo!') : (i18n.resolvedLanguage?.startsWith('en') ? 'Start the day' : 'Empieza el día');
-  return <div className="kalandra-home">
-    <section className="kalandra-overview" aria-label={t('summaryMetrics')}>
+  return <div className="companion-home">
+    <section className="companion-overview" aria-label={t('summaryMetrics')}>
       <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`} style={{ background: `conic-gradient(#e4b746 ${percent * 3.6}deg, #392c47 0deg)` }}><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{i18n.resolvedLanguage?.startsWith('en') ? 'Total progress' : 'Progreso total'}</span><h1 tabIndex={-1}>{welcome}</h1><p>{i18n.resolvedLanguage?.startsWith('en') ? `${remaining} left to do` : `Te quedan ${remaining} por hacer`}</p></div></div>
       <div className="overview-bars"><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} value={dailyDone} total={daily.length} characters={characters} active={active} progress={progress} trackers={daily} /><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Semana'} value={weeklyDone} total={weekly.length} characters={characters} active={active} progress={progress} trackers={weekly} /></div>
       <div className="overview-stats"><div><Flame size={16} /><b>{done}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'done' : 'hechas'}</span></div><div><Users size={16} /><b>{characters.length || '—'}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'characters' : 'personajes'}</span></div><div><Clock3 size={16} /><b>{resetCountdown}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'to daily reset' : 'al reinicio diario'}</span></div></div>
     </section>
 
-    <section className="kalandra-character-strip" aria-label={t('characters')}>
+    <section className="companion-character-strip" aria-label={t('characters')}>
       <div className="character-chips">{characters.length ? characters.map((character) => <button type="button" key={character.id} className={`character-chip${active?.id === character.id ? ' selected' : ''}`} aria-pressed={active?.id === character.id} onClick={() => onSelectCharacter(character.id)}><span className="character-avatar">{character.name.slice(0, 1).toUpperCase()}</span><span><b>{character.name}</b><small>{i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} {perScope(character, daily)}% · {i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Sem'} {perScope(character, weekly)}%</small></span><strong>{perScope(character, timed)}%</strong></button>) : <div className="character-chip selected"><span className="character-avatar">A</span><span><b>{t('localProfile')}</b><small>{t('noCharactersDesc')}</small></span><strong>{percent}%</strong></div>}</div>
       <button className="button button-secondary roster-button" onClick={() => onNavigate('characters')}><Users size={15} />{t('characters')}</button>
     </section>
 
-    <section className="kalandra-lists" aria-label={t('recordProgress')}>
+    <section className="companion-lists" aria-label={t('recordProgress')}>
       <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Daily' : 'Diarias'} records={daily} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
       <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Weekly' : 'Semanales'} records={weekly} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
     </section>
@@ -294,12 +302,12 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onAdd, o
   const label = title === 'Diarias' || title === 'Daily' ? 'daily' : 'weekly';
   return <section className="checklist-panel">
     <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><select aria-label={t('filterCategory')} value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">{t('all')}</option>{[...new Set(records.map((tracker) => tracker.category))].map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
-    <div className="kalandra-list">{filtered.length ? filtered.map((tracker) => <KalandraTrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="kalandra-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
+    <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
     <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{i18n.resolvedLanguage?.startsWith('en') ? `Add ${label}` : `Añadir ${label === 'daily' ? 'diaria' : 'semanal'}`}</button>
   </section>;
 }
 
-function KalandraTrackerRow({ tracker, value, active, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
+function TrackerRow({ tracker, value, active, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
   const t = useLocale();
   const [celebration, setCelebration] = useState(false);
   const complete = value >= tracker.limit;
@@ -315,11 +323,11 @@ function KalandraTrackerRow({ tracker, value, active, onProgress, onEdit, onDele
     await onProgress(tracker, delta);
     if (completes) setCelebration(true);
   }
-  return <article className={`kalandra-row${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}`}>
+  return <article className={`companion-row${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}`}>
     {celebration && <div className="tracker-celebration" aria-hidden="true">{fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}{confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}</div>}
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
     <div className="row-copy"><div className="row-title-line"><h3>{name}</h3><span className="row-tag">{tracker.frequency === 'daily' ? t('dailyReset') : tracker.frequency === 'weekly' ? t('weeklyReset') : t('noReset')}</span><span className="row-category">{tracker.category}</span></div><div className="row-description">{tracker.description || t('noDescription')}</div><span className="row-scope">{tracker.scope === 'account' ? t('scopeAccount') : tracker.scope === 'server' ? t('scopeServer') : active?.name ?? t('localProfile')}</span></div>
-    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b></div>
+    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={17} aria-hidden="true" /></button></div>
     <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
   </article>;
 }
@@ -532,7 +540,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); previousFocus?.focus(); };
   }, []);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><motion.section ref={modalRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="modal-head"><div><div className="eyebrow">AION 2 COMPANION</div><h2 id="modal-title">{title}</h2></div><button type="button" className="icon-button" aria-label={t('close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div>{children}</motion.section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><motion.section ref={modalRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="modal-head"><div><div className="eyebrow">AION2Companion</div><h2 id="modal-title">{title}</h2></div><button type="button" className="icon-button" aria-label={t('close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div>{children}</motion.section></div>;
 }
 
 function regionName(region: Region, t: ReturnType<typeof useLocale>): string { return t(region); }
