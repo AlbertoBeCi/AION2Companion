@@ -1,6 +1,6 @@
-# AION 2 Companion
+# AION2Companion
 
-![AION 2 Companion — Track, Plan, Play](docs/assets/aion2-companion-banner.png)
+![AION2Companion — Track, Plan, Play](docs/assets/aion2-companion-banner.png)
 
 **Compañero local para seguir actividades, temporizadores y progreso de AION 2.** Funciona sin conectar una cuenta de juego. Crear personajes o elegir servidor es opcional para los contadores personales.
 
@@ -62,14 +62,14 @@ GitHub Actions ejecuta pruebas y compilación en pull requests y al enviar cambi
 
 ## Documentación
 
-- [Auditoría de la referencia Kalandra](docs/kalandra-audit.md)
+- [Auditoría funcional de referencia](docs/reference-audit.md)
 - [Inventario funcional](docs/functional-inventory.md)
 - [Matriz de paridad y evidencias](docs/feature-parity-matrix.md)
 - [Catálogo de reglas y fuentes](docs/official-rules-catalog.json)
 
 ---
 
-# AION 2 Companion
+# AION2Companion
 
 **A local-first companion for tracking AION 2 activities, timers, and progress.** It works without a game account. Creating characters or selecting a server is optional for personal counters.
 
@@ -131,7 +131,7 @@ GitHub Actions runs tests and builds for pull requests and pushes to `main` (`.g
 
 ## Documentation
 
-- [Kalandra reference audit](docs/kalandra-audit.md)
+- [External reference functional audit](docs/reference-audit.md)
 - [Functional inventory](docs/functional-inventory.md)
 - [Feature parity and evidence matrix](docs/feature-parity-matrix.md)
 - [Rules and sources catalogue](docs/official-rules-catalog.json)

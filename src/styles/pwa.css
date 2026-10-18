@@ -8,10 +8,10 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ink);
   border-radius: 10px;
   background: var(--surface-raised);
-  box-shadow: 0 10px 35px rgb(0 0 0 / 28%);
+  box-shadow: 5px 5px 0 var(--black);
   color: var(--text);
   font-size: 10px;
 }

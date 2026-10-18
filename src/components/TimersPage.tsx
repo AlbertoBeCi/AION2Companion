@@ -5,6 +5,7 @@ import { AlarmClock, CalendarClock, Clock3, ExternalLink, Radio, ShieldAlert, Vo
 import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence, nextWeeklyGlobalReset } from '../lib/schedule';
 import { isWithinTimerAlertWindow, playTimerAlert, preloadTimerAlertAudio, TIMER_ALERT_LEAD_MS } from '../lib/timerAlerts';
 import { fetchGartuaFeed, gartuaFeedServers, isSupportedGartuaServer, type GartuaFeed } from '../lib/gartuaFeed';
+import { NeoSelect } from './NeoSelect';
 
 const serverZones = [
   { value: 'Europe/Berlin', label: 'Europe · Berlin' },
@@ -184,7 +185,7 @@ export function TimersPage() {
   }
 
   return <>
-    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><label className="server-zone-picker"><span>{t('serverTimeZone')}</span><select aria-label={t('serverTimeZone')} value={timeZone} onChange={(event) => changeZone(event.target.value)}>{serverZones.map((zone) => <option value={zone.value} key={zone.value}>{zone.label}</option>)}</select></label></section>
+    <section className="hero-row timers-hero"><div><div className="eyebrow"><span className="live-dot" aria-hidden="true" />{t('timers')}</div><h1 tabIndex={-1}>{t('timersTitle')}</h1><p>{t('timersSubtitle')}</p></div><label className="server-zone-picker"><span>{t('serverTimeZone')}</span><NeoSelect ariaLabel={t('serverTimeZone')} value={timeZone} onChange={(value) => changeZone(String(value))} options={serverZones} /></label></section>
 
     <section className="weekly-reset-card">
       <div className="weekly-reset-art"><CalendarClock size={22} /></div>
@@ -195,7 +196,7 @@ export function TimersPage() {
     <section className="timer-list-panel gartua-feed-panel content-section" aria-labelledby="gartua-feed-heading">
       <div className="section-heading gartua-feed-heading">
         <div><div className="eyebrow"><Radio size={13} aria-hidden="true" />{t('gartuaReportSource')}</div><h2 id="gartua-feed-heading">{t('gartuaTitle')}</h2><p>{t('gartuaDescription')}</p></div>
-        <label className="server-zone-picker"><span>{t('gartuaServer')}</span><select aria-label={t('gartuaServer')} value={gartuaServer} onChange={(event) => changeGartuaServer(event.target.value)}><option value="">{t('chooseGartuaServer')}</option>{gartuaFeedServers.map((region) => { const regionKey = region.region === 'Europe' ? 'chooseRegionEurope' : region.region === 'North America East' ? 'chooseRegionNaEast' : region.region === 'North America West' ? 'chooseRegionNaWest' : 'chooseRegionSouthAmerica'; return <optgroup key={region.region} label={t(regionKey)}>{region.servers.map((server) => <option key={server.id} value={server.id}>{server.name}</option>)}</optgroup>; })}</select></label>
+        <label className="server-zone-picker"><span>{t('gartuaServer')}</span><NeoSelect ariaLabel={t('gartuaServer')} value={gartuaServer} onChange={(value) => changeGartuaServer(String(value))} options={[{ value: '', label: t('chooseGartuaServer') }, ...gartuaFeedServers.flatMap((region) => { const group = region.region === 'Europe' ? 'chooseRegionEurope' : region.region === 'North America East' ? 'chooseRegionNaEast' : region.region === 'North America West' ? 'chooseRegionNaWest' : 'chooseRegionSouthAmerica'; return region.servers.map((server) => ({ value: server.id, label: server.name, group: t(group) })); })]} /></label>
       </div>
       {!gartuaServer ? <p className="gartua-feed-note">{t('gartuaSelectServer')}</p> : gartuaFeedStatus === 'loading' ? <p className="gartua-feed-note" role="status">{t('gartuaLoading')}</p> : gartuaFeedStatus === 'error' ? <p className="gartua-feed-note is-error" role="status">{t('gartuaUnavailable')}</p> : <div className="schedule-list">{gartuaTimers.map((boss) => {
         const isAlive = boss.status?.st === 'up';

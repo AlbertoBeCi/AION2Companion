@@ -1,12 +1,11 @@
-# Auditoría funcional y técnica de Kalandra
+# Auditoría funcional y técnica de una referencia visual
 
-**Referencia:** [kalandra.pages.dev](https://kalandra.pages.dev/)  
 **Revisión:** 16 de octubre de 2026  
 **Método:** navegación del sitio público, estados accesibles, controles de formularios, observación de cambios y recarga, y lectura de recursos servidos públicamente. No se copiaron código ni recursos gráficos.
 
 ## Alcance y cautelas
 
-La referencia es una aplicación de seguimiento manual. Los nombres de actividades, topes, horarios, valores de Odyle y cálculos descritos abajo son **lo observado en Kalandra**, no reglas de juego confirmadas por NC. El sitio no prueba por sí mismo que esos datos sean oficiales. La página también declara que ciertos horarios, como la grieta espacial, son estimados comunitarios.
+La auditoría estudió una aplicación de seguimiento manual. Los nombres de actividades, topes, horarios, valores de Odyle y cálculos descritos abajo son **observaciones de esa aplicación**, no reglas de juego confirmadas por NC. El sitio no prueba por sí mismo que esos datos sean oficiales. La página también declara que ciertos horarios, como la grieta espacial, son estimados comunitarios.
 
 La inspección cubrió las pantallas de resumen/lista, cuadrícula, personajes, configuración, recursos, creación y edición de actividades, preferencias, filtros, acciones de progreso, exportación y flujo de importación. Algunas pruebas destructivas de reinicio global y borrado de fábrica no se ejecutaron. La instalación PWA, el uso real sin conexión y las fronteras temporales durante cambios de horario no se confirmaron mediante una sesión instalada/offline.
 
@@ -35,7 +34,7 @@ El diálogo permite crear, editar y eliminar; ofrece ocho clases y nombre limita
 
 ### Recursos
 
-La interfaz de Odyle permite registrar un saldo y una reserva, y representa una proyección temporal. La inspección del código público indicó parámetros locales de 15 unidades/3 horas, tope 560 o 840 con membresía y una reserva introducida por el usuario. Un control de membresía altera la proyección. Estas cifras proceden de la implementación de Kalandra y **no se cargan como datos de este proyecto**. No se encontró lectura de saldo desde el cliente del juego.
+La interfaz de Odyle permite registrar un saldo y una reserva, y representa una proyección temporal. La inspección del código público indicó parámetros locales de 15 unidades/3 horas, tope 560 o 840 con membresía y una reserva introducida por el usuario. Un control de membresía altera la proyección. Estas cifras proceden de la implementación auditada y **no se cargan como datos de AION2Companion**. No se encontró lectura de saldo desde el cliente del juego.
 
 ### Estadísticas y reinicios
 
@@ -67,7 +66,7 @@ Los estilos responden a cortes aproximados en 1.180, 900 y 640 px. Se detectaron
 
 ## Límites de la evidencia
 
-1. Comportamiento verificado de Kalandra y veracidad del juego son estados independientes.
+1. El comportamiento observado en la aplicación auditada y la veracidad de las reglas del juego son estados independientes.
 2. Las estimaciones observadas no se convierten en reglas del Companion.
 3. Instalación, operación offline real, migración de almacenamiento, reinicios al cambiar de zona horaria y las fronteras suspendidas requieren comprobación adicional.
 4. El error de importación necesita una reproducción manual para atribuir la causa.

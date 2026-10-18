@@ -9,7 +9,7 @@ const trackerSchema = z.object({
   resetWeekday: z.number().int().min(0).max(6), resetTimeZone: z.string().optional(), region: z.enum(['global', 'korea', 'taiwan', 'unknown']), provenance: z.enum(['user-defined', 'official', 'community']), sourceId: z.string().nullable(), createdAt: z.string(), archived: z.boolean().optional(),
 });
 const progressSchema = z.object({ id: z.string().min(1), trackerId: z.string(), ownerKey: z.string(), periodKey: z.string(), value: z.number().int().min(0), updatedAt: z.string() });
-const preferencesSchema = z.object({ id: z.literal('main'), language: z.enum(['es', 'en']), theme: z.enum(['dark', 'light']), compact: z.boolean(), trackerSeedVersion: z.number().int().optional() });
+const preferencesSchema = z.object({ id: z.literal('main'), language: z.enum(['es', 'en']), theme: z.enum(['dark', 'light']), compact: z.boolean(), trackerSeedVersion: z.number().int().optional(), trackerOrder: z.object({ daily: z.array(z.string()), weekly: z.array(z.string()) }).optional() });
 const backupSchema = z.object({ schemaVersion: z.literal(1), exportedAt: z.string(), characters: z.array(characterSchema), trackers: z.array(trackerSchema), progress: z.array(progressSchema), preferences: preferencesSchema }).superRefine((backup, context) => {
   const trackers = new Map(backup.trackers.map((tracker) => [tracker.id, tracker]));
   backup.progress.forEach((entry, index) => {
@@ -34,7 +34,7 @@ export async function importBackup(file: File, mode: 'merge' | 'replace'): Promi
     }
     await Promise.all([
       db.characters.bulkPut(backup.characters), db.trackers.bulkPut(backup.trackers), db.progress.bulkPut(backup.progress),
-      db.preferences.put({ ...backup.preferences, trackerSeedVersion: 1 }),
+      (() => { const { trackerOrder, ...preferences } = backup.preferences; return db.preferences.put({ ...preferences, ...(trackerOrder ? { trackerOrder } : {}), trackerSeedVersion: 1 }); })(),
     ]);
   });
 }
