@@ -1,0 +1,540 @@
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, ChevronDown, Clock3, Download, Flame, Gauge, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
+import { db, ensurePreferences } from './db/database';
+import { clampProgress, nextReset, ownerKey, periodKey, progressPercent } from './lib/rules';
+import { characterInputSchema, trackerInputSchema } from './lib/validation';
+import { exportBackup, importBackup } from './lib/backup';
+import { sourceRecords } from './lib/sources';
+import { useUiStore, type Page } from './stores/uiStore';
+import type { Character, Preferences, ProgressEntry, Tracker, TrackerScope, ResetFrequency, Region } from './types/domain';
+import { PwaPrompt } from './components/PwaPrompt';
+import { TimersPage } from './components/TimersPage';
+import { CONQUEST_TRACKER_ID, seedGlobalChecklists } from './lib/checklists';
+import { globalSchedules, nextScheduleOccurrence } from './lib/schedule';
+import { playCelebrationSound } from './lib/timerAlerts';
+
+const id = () => crypto.randomUUID();
+const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
+const initialTracker = { name: '', description: '', category: '', limit: 1, scope: 'character' as TrackerScope, frequency: 'none' as ResetFrequency, resetTime: '00:00', resetWeekday: 3, resetTimeZone: undefined as string | undefined, region: 'global' as Region };
+const pageIcon = { dashboard: LayoutDashboard, trackers: Gauge, timers: TimerReset, characters: Users, sources: BookOpen, settings: Settings2 };
+const pageTitleKey: Record<Page, string> = { dashboard: 'dashboard', trackers: 'trackers', timers: 'timers', characters: 'characters', sources: 'sources', settings: 'settings' };
+const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const confettiPieces = Array.from({ length: 30 }, (_, index) => ({
+  x: `${(index * 37 + 11) % 100}%`,
+  delay: `${(index % 7) * 0.035}s`,
+  rotation: `${(index * 67) % 540}deg`,
+}));
+const fireworkBursts = [0, 1].map((burst) => ({
+  className: burst === 0 ? 'burst-left' : 'burst-right',
+  delay: `${burst * 0.13}s`,
+  particles: Array.from({ length: 12 }, (_, index) => ({ angle: `${index * 30}deg`, distance: `${34 + (index % 3) * 7}px` })),
+}));
+
+function useLocale() {
+  const { t } = useTranslation();
+  return t;
+}
+
+function App() {
+  const { t } = useTranslation();
+  const page = useUiStore((state) => state.page);
+  const setPage = useUiStore((state) => state.setPage);
+  const toast = useUiStore((state) => state.toast);
+  const notify = useUiStore((state) => state.notify);
+  const characters = useLiveQuery(() => db.characters.orderBy('name').toArray(), []) ?? [];
+  const trackers = useLiveQuery(() => db.trackers.orderBy('createdAt').reverse().toArray(), []) ?? [];
+  const progress = useLiveQuery(() => db.progress.toArray(), []) ?? [];
+  const preferences = useLiveQuery(() => db.preferences.get('main'), []) ?? { id: 'main', language: 'es', theme: 'dark', compact: false };
+  const [activeCharacter, setActiveCharacter] = useState('');
+  const [modal, setModal] = useState<'character' | 'tracker' | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
+  const [editingTracker, setEditingTracker] = useState<Tracker | null>(null);
+  const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
+  const previousPage = useRef(page);
+  const active = characters.find((character) => character.id === activeCharacter) ?? characters[0] ?? null;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme;
+    document.documentElement.lang = preferences.language;
+    if (i18n.language !== preferences.language) void i18n.changeLanguage(preferences.language);
+  }, [preferences.language, preferences.theme]);
+
+  useEffect(() => {
+    document.title = `${t(pageTitleKey[page])} · AION 2 Companion`;
+  }, [page, preferences.language, t]);
+
+  useEffect(() => { void seedGlobalChecklists(); }, []);
+
+  async function savePreferences(patch: Partial<Preferences>) {
+    const current = await ensurePreferences();
+    await db.preferences.put({ ...current, ...patch });
+  }
+
+  async function changeProgress(tracker: Tracker, delta: number) {
+    const selectedCharacter = active;
+    const owner = ownerKey(tracker, selectedCharacter?.id ?? null, selectedCharacter?.server ?? null, selectedCharacter?.region);
+    const period = periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
+    const entryId = `${tracker.id}|${owner}|${period}`;
+    const current = await db.progress.get(entryId);
+    const value = clampProgress((current?.value ?? 0) + delta, tracker.limit);
+    await db.progress.put({ id: entryId, trackerId: tracker.id, ownerKey: owner, periodKey: period, value, updatedAt: new Date().toISOString() });
+  }
+
+  async function deleteCharacter(character: Character) {
+    if (!window.confirm(t('deleteWarning'))) return;
+    await db.transaction('rw', db.characters, db.progress, async () => {
+      await db.characters.delete(character.id);
+      await db.progress.where('ownerKey').equals(`character:${character.id}`).delete();
+    });
+    if (activeCharacter === character.id) setActiveCharacter('');
+    notify(t('saved'));
+  }
+
+  async function deleteTracker(tracker: Tracker) {
+    if (!window.confirm(t('deleteWarning'))) return;
+    await db.transaction('rw', db.trackers, db.progress, async () => {
+      await db.trackers.delete(tracker.id);
+      await db.progress.where('trackerId').equals(tracker.id).delete();
+    });
+    notify(t('saved'));
+  }
+
+  async function downloadBackup() {
+    const data = await exportBackup();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `aion2-companion-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notify(t('exported'));
+  }
+
+  async function handleImport(file?: File) {
+    if (!file) return;
+    try {
+      await importBackup(file, importMode);
+      notify(t('imported'));
+    } catch {
+      notify(t('invalidFile'));
+    }
+  }
+
+  async function clearData(which: 'trackers' | 'characters' | 'all') {
+    if (!window.confirm(t('deleteWarning'))) return;
+    if (which === 'all') await db.transaction('rw', db.characters, db.trackers, db.progress, db.preferences, async () => { const current = await db.preferences.get('main'); await Promise.all([db.characters.clear(), db.trackers.clear(), db.progress.clear(), db.preferences.clear()]); await db.preferences.put({ ...(current ?? { id: 'main' as const, language: 'es' as const, theme: 'dark' as const, compact: false }), trackerSeedVersion: 2 }); });
+    if (which === 'trackers') await db.transaction('rw', db.trackers, db.progress, async () => { await Promise.all([db.trackers.clear(), db.progress.clear()]); });
+    if (which === 'characters') await db.transaction('rw', db.characters, db.progress, async () => { await Promise.all([db.characters.clear(), db.progress.where('ownerKey').startsWith('character:').delete()]); });
+    setActiveCharacter('');
+    notify(t('saved'));
+  }
+
+  function openCharacter(character?: Character) {
+    setEditingCharacter(character ?? null);
+    setModal('character');
+  }
+  function openTracker(tracker?: Tracker) {
+    setEditingTracker(tracker ?? null);
+    setModal('tracker');
+  }
+
+  const pageContent = page === 'dashboard'
+    ? <Dashboard trackers={trackers} characters={characters} progress={progress} active={active} onProgress={changeProgress} onAddTracker={() => openTracker()} onNavigate={setPage} onSelectCharacter={setActiveCharacter} onEditTracker={openTracker} onDeleteTracker={deleteTracker} />
+    : page === 'trackers'
+      ? <TrackersPage trackers={trackers} characters={characters} progress={progress} active={active} onProgress={changeProgress} onAdd={() => openTracker()} onEdit={openTracker} onDelete={deleteTracker} />
+      : page === 'timers'
+        ? <TimersPage />
+      : page === 'characters'
+        ? <CharactersPage characters={characters} activeId={active?.id ?? ''} onAdd={() => openCharacter()} onEdit={openCharacter} onDelete={deleteCharacter} onSelect={setActiveCharacter} />
+        : page === 'sources'
+          ? <SourcesPage />
+          : <SettingsPage preferences={preferences} importMode={importMode} setImportMode={setImportMode} savePreferences={savePreferences} downloadBackup={downloadBackup} handleImport={handleImport} clearData={clearData} />;
+
+  return <div className={`app-shell ${preferences.compact ? 'is-compact' : ''}`}>
+    <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
+    <header className="sidebar">
+      <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION 2</b><small>COMPANION</small></span></button>
+      <div className="sidebar-caption">{t('eyebrow')}</div>
+      <nav aria-label={t('mainNavigation')} className="main-nav">
+        {(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => {
+          const Icon = pageIcon[item];
+          const activeTrackerCount = trackers.filter((tracker) => !tracker.archived).length;
+          return <button key={item} type="button" title={t(pageTitleKey[item])} aria-label={t(pageTitleKey[item])} aria-current={page === item ? 'page' : undefined} className={`nav-link ${page === item ? 'active' : ''}`} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><span>{t(pageTitleKey[item])}</span>{item === 'trackers' && activeTrackerCount > 0 && <span className="nav-count" aria-hidden="true">{activeTrackerCount}</span>}</button>;
+        })}
+      </nav>
+      <div className="sidebar-spacer" />
+      <div className="privacy-card"><ShieldCheck size={17} /><span>{t('localData')}</span><i /></div>
+      <div className="sidebar-footer">{t('projectNotice')}</div>
+      <ResetTicker trackers={trackers} language={preferences.language} />
+      <div className="top-actions">
+        <label className="character-select"><Users size={15} /><select aria-label={t('selectCharacter')} value={active?.id ?? ''} onChange={(event) => setActiveCharacter(event.target.value)}><option value="">{characters.length ? t('allCharacters') : t('localProfile')}</option>{characters.map((character) => <option key={character.id} value={character.id}>{character.name} · {character.server || t('unknown')}</option>)}</select><ChevronDown size={14} /></label>
+        <button className="icon-button" title={t('language')} aria-label={`${t('language')}: ${preferences.language === 'es' ? 'English' : 'Español'}`} onClick={() => void savePreferences({ language: preferences.language === 'es' ? 'en' : 'es' })}><Languages size={17} aria-hidden="true" /><span className="lang-short">{preferences.language.toUpperCase()}</span></button>
+        <button className="icon-button theme-toggle" title={t('theme')} aria-label={`${t('theme')}: ${preferences.theme === 'dark' ? t('light') : t('dark')}`} onClick={() => void savePreferences({ theme: preferences.theme === 'dark' ? 'light' : 'dark' })}>{preferences.theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}</button>
+      </div>
+    </header>
+    <main className="main-area" id="main-content" tabIndex={-1}>
+      <div className="page-wrap"><AnimatePresence mode="wait"><motion.div id="page-content" key={page} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} onAnimationComplete={() => { if (previousPage.current !== page) { document.querySelector<HTMLElement>('#page-content h1')?.focus(); previousPage.current = page; } }}>{pageContent}</motion.div></AnimatePresence></div>
+    </main>
+    <nav className="mobile-nav" aria-label={t('mainNavigation')}>{(['dashboard', 'trackers', 'timers', 'characters', 'sources', 'settings'] as Page[]).map((item) => { const Icon = pageIcon[item]; return <button type="button" key={item} aria-current={page === item ? 'page' : undefined} aria-label={t(pageTitleKey[item])} className={page === item ? 'active' : ''} onClick={() => setPage(item)}><Icon size={18} aria-hidden="true" /><small>{t(pageTitleKey[item])}</small></button>; })}</nav>
+    {modal === 'character' && <CharacterDialog initial={editingCharacter} onClose={() => setModal(null)} onSaved={(character) => { if (!activeCharacter) setActiveCharacter(character.id); setModal(null); notify(t('saved')); }} />}
+    {modal === 'tracker' && <TrackerDialog initial={editingTracker} onClose={() => setModal(null)} onSaved={() => { setModal(null); notify(t('saved')); }} />}
+    <AnimatePresence>{toast && <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><Check size={16} aria-hidden="true" />{toast}</motion.div>}</AnimatePresence>
+    <PwaPrompt />
+  </div>;
+}
+
+function ResetTicker({ trackers, language }: { trackers: Tracker[]; language: 'es' | 'en' }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const daily = trackers.find((tracker) => !tracker.archived && tracker.frequency === 'daily');
+  const weekly = trackers.find((tracker) => !tracker.archived && tracker.frequency === 'weekly');
+  const dailyAt = nextReset('daily', daily?.resetTime ?? '16:00', daily?.resetWeekday ?? 3, now, daily?.resetTimeZone ?? 'Asia/Seoul');
+  const weeklyAt = nextReset('weekly', weekly?.resetTime ?? '16:00', weekly?.resetWeekday ?? 3, now, weekly?.resetTimeZone ?? 'Asia/Seoul');
+  const rift = globalSchedules.find((schedule) => schedule.id === 'spacetime-rift');
+  const riftZone = localStorage.getItem('aion2-timer-server-zone') || 'Europe/Berlin';
+  const riftAt = rift ? nextScheduleOccurrence(rift, now, riftZone) : null;
+  const countdown = (date: Date | null) => {
+    if (!date) return '—';
+    const seconds = Math.max(0, Math.floor((date.getTime() - now.getTime()) / 1000));
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = seconds % 60;
+    return `${days ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+  };
+  const dailyLabel = language === 'es' ? 'Diario' : 'Daily';
+  const weeklyLabel = language === 'es' ? 'Semanal' : 'Weekly';
+  const weeklyDay = weeklyAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', timeZone: weekly?.resetTimeZone ?? 'Asia/Seoul' }).format(weeklyAt).toUpperCase() : '';
+  const riftTime = riftAt ? new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: riftZone }).format(riftAt) : '';
+  const clock = new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+  const timer = (kind: string, label: string, time: string, target: Date | null) => <div className={`header-timer ${kind}`} key={kind}><span className="header-timer-ring" aria-hidden="true" /><span className="header-timer-copy"><small>{label} · {time}</small><b>{countdown(target)}</b></span></div>;
+
+  return <div className="reset-ticker" role="group" aria-label={language === 'es' ? 'Reloj y temporizadores' : 'Clock and timers'}>
+    <span className="game-clock"><Clock3 size={12} aria-hidden="true" />{clock}</span>
+    {timer('daily', dailyLabel, daily?.resetTime ?? '16:00', dailyAt)}
+    {timer('weekly', weeklyLabel, `${weeklyDay} ${weekly?.resetTime ?? '16:00'}`, weeklyAt)}
+    {timer('rift', 'Rift', riftTime || '—', riftAt)}
+  </div>;
+}
+
+interface DashboardProps {
+  trackers: Tracker[]; characters: Character[]; progress: ProgressEntry[]; active: Character | null;
+  onProgress: (tracker: Tracker, delta: number) => void; onAddTracker: () => void; onNavigate: (page: Page) => void;
+  onSelectCharacter: (id: string) => void; onEditTracker: (tracker: Tracker) => void; onDeleteTracker: (tracker: Tracker) => void;
+}
+function Dashboard({ trackers, characters, progress, active, onProgress, onAddTracker, onNavigate, onSelectCharacter, onEditTracker, onDeleteTracker }: DashboardProps) {
+  const t = useLocale();
+  const daily = trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'daily');
+  const weekly = trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'weekly');
+  const timed = [...daily, ...weekly];
+  const done = timed.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  const remaining = timed.length - done;
+  const dailyDone = daily.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  const weeklyDone = weekly.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  const percent = timed.length ? Math.round(done / timed.length * 100) : 0;
+  const dailyReset = nextReset('daily', daily[0]?.resetTime ?? '16:00', daily[0]?.resetWeekday ?? 3, new Date(), daily[0]?.resetTimeZone ?? 'Asia/Seoul');
+  const weeklyReset = nextReset('weekly', weekly[0]?.resetTime ?? '16:00', weekly[0]?.resetWeekday ?? 3, new Date(), weekly[0]?.resetTimeZone ?? 'Asia/Seoul');
+  const resetCountdown = shortCountdown(dailyReset);
+  const weeklyCountdown = shortCountdown(weeklyReset);
+  const perScope = (person: Character | null, items: Tracker[]) => {
+    const complete = items.filter((tracker) => currentValue(tracker, person, progress) >= tracker.limit).length;
+    return items.length ? Math.round(complete / items.length * 100) : 0;
+  };
+  const welcome = remaining === 0 ? (i18n.resolvedLanguage?.startsWith('en') ? 'All done!' : '¡Todo listo!') : (i18n.resolvedLanguage?.startsWith('en') ? 'Start the day' : 'Empieza el día');
+  return <div className="kalandra-home">
+    <section className="kalandra-overview" aria-label={t('summaryMetrics')}>
+      <div className="overview-total"><div className="overview-ring" role="progressbar" aria-label={t('summaryMetrics')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-valuetext={`${percent}% · ${done} ${t('of')} ${timed.length}`} style={{ background: `conic-gradient(#e4b746 ${percent * 3.6}deg, #392c47 0deg)` }}><span aria-hidden="true">{percent}%</span><small aria-hidden="true">{done}/{timed.length}</small></div><div className="overview-copy"><span>{i18n.resolvedLanguage?.startsWith('en') ? 'Total progress' : 'Progreso total'}</span><h1 tabIndex={-1}>{welcome}</h1><p>{i18n.resolvedLanguage?.startsWith('en') ? `${remaining} left to do` : `Te quedan ${remaining} por hacer`}</p></div></div>
+      <div className="overview-bars"><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} value={dailyDone} total={daily.length} characters={characters} active={active} progress={progress} trackers={daily} /><ProgressSummary label={i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Semana'} value={weeklyDone} total={weekly.length} characters={characters} active={active} progress={progress} trackers={weekly} /></div>
+      <div className="overview-stats"><div><Flame size={16} /><b>{done}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'done' : 'hechas'}</span></div><div><Users size={16} /><b>{characters.length || '—'}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'characters' : 'personajes'}</span></div><div><Clock3 size={16} /><b>{resetCountdown}</b><span>{i18n.resolvedLanguage?.startsWith('en') ? 'to daily reset' : 'al reinicio diario'}</span></div></div>
+    </section>
+
+    <section className="kalandra-character-strip" aria-label={t('characters')}>
+      <div className="character-chips">{characters.length ? characters.map((character) => <button type="button" key={character.id} className={`character-chip${active?.id === character.id ? ' selected' : ''}`} aria-pressed={active?.id === character.id} onClick={() => onSelectCharacter(character.id)}><span className="character-avatar">{character.name.slice(0, 1).toUpperCase()}</span><span><b>{character.name}</b><small>{i18n.resolvedLanguage?.startsWith('en') ? 'Today' : 'Hoy'} {perScope(character, daily)}% · {i18n.resolvedLanguage?.startsWith('en') ? 'Week' : 'Sem'} {perScope(character, weekly)}%</small></span><strong>{perScope(character, timed)}%</strong></button>) : <div className="character-chip selected"><span className="character-avatar">A</span><span><b>{t('localProfile')}</b><small>{t('noCharactersDesc')}</small></span><strong>{percent}%</strong></div>}</div>
+      <button className="button button-secondary roster-button" onClick={() => onNavigate('characters')}><Users size={15} />{t('characters')}</button>
+    </section>
+
+    <section className="kalandra-lists" aria-label={t('recordProgress')}>
+      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Daily' : 'Diarias'} records={daily} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel title={i18n.resolvedLanguage?.startsWith('en') ? 'Weekly' : 'Semanales'} records={weekly} active={active} progress={progress} onProgress={onProgress} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={weeklyCountdown} emptyText={t('noTrackersDesc')} />
+    </section>
+  </div>;
+}
+
+function shortCountdown(target: Date | null): string {
+  if (!target) return '—';
+  const seconds = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${days ? `${days}d ` : ''}${hours}h ${String(minutes).padStart(2, '0')}m`;
+}
+
+function ProgressSummary({ label, value, total, characters, active, progress, trackers }: { label: string; value: number; total: number; characters: Character[]; active: Character | null; progress: ProgressEntry[]; trackers: Tracker[] }) {
+  const pct = total ? Math.round(value / total * 100) : 0;
+  const others = characters.filter((character) => character.id !== active?.id);
+  const altPercent = others.length ? `${Math.round(others.reduce((sum, character) => sum + (trackers.length ? trackers.filter((tracker) => currentValue(tracker, character, progress) >= tracker.limit).length / trackers.length * 100 : 0), 0) / others.length)}%` : '—';
+  const accountTrackers = trackers.filter((tracker) => tracker.scope === 'account');
+  const accountPercent = accountTrackers.length ? `${Math.round(accountTrackers.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length / accountTrackers.length * 100)}%` : '—';
+  return <div className="overview-progress-row"><div className="overview-progress-top"><b>{label}</b><strong>{value}/{total}</strong></div><div className="overview-progress-track"><span style={{ width: `${pct}%` }} /></div><div className="overview-progress-legend"><span><i className="legend-main" />{active?.name ?? 'MAIN'} <b>{pct}%</b></span><span><i className="legend-alt" />Alts <b>{altPercent}</b></span><span><i className="legend-account" />Cuenta <b>{accountPercent}</b></span></div></div>;
+}
+
+function ChecklistPanel({ title, records, active, progress, onProgress, onAdd, onEdit, onDelete, resetText, emptyText }: { title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
+  const t = useLocale();
+  const [category, setCategory] = useState('all');
+  const completed = records.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  const filtered = category === 'all' ? records : records.filter((tracker) => tracker.category === category);
+  const label = title === 'Diarias' || title === 'Daily' ? 'daily' : 'weekly';
+  return <section className="checklist-panel">
+    <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><select aria-label={t('filterCategory')} value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">{t('all')}</option>{[...new Set(records.map((tracker) => tracker.category))].map((item) => <option key={item} value={item}>{item}</option>)}</select><button type="button" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Reset all ${label} trackers` : `Reiniciar todos los contadores ${label === 'daily' ? 'diarios' : 'semanales'}`} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={i18n.resolvedLanguage?.startsWith('en') ? `Complete visible ${label} trackers` : `Completar contadores ${label === 'daily' ? 'diarios' : 'semanales'} visibles`} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
+    <div className="kalandra-list">{filtered.length ? filtered.map((tracker) => <KalandraTrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="kalandra-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
+    <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{i18n.resolvedLanguage?.startsWith('en') ? `Add ${label}` : `Añadir ${label === 'daily' ? 'diaria' : 'semanal'}`}</button>
+  </section>;
+}
+
+function KalandraTrackerRow({ tracker, value, active, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
+  const t = useLocale();
+  const [celebration, setCelebration] = useState(false);
+  const complete = value >= tracker.limit;
+  const name = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : tracker.name;
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = window.setTimeout(() => setCelebration(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [celebration]);
+  async function change(delta: number) {
+    const completes = delta > 0 && value < tracker.limit && value + delta >= tracker.limit;
+    if (completes) playCelebrationSound();
+    await onProgress(tracker, delta);
+    if (completes) setCelebration(true);
+  }
+  return <article className={`kalandra-row${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}`}>
+    {celebration && <div className="tracker-celebration" aria-hidden="true">{fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}{confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}</div>}
+    <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
+    <div className="row-copy"><div className="row-title-line"><h3>{name}</h3><span className="row-tag">{tracker.frequency === 'daily' ? t('dailyReset') : tracker.frequency === 'weekly' ? t('weeklyReset') : t('noReset')}</span><span className="row-category">{tracker.category}</span></div><div className="row-description">{tracker.description || t('noDescription')}</div><span className="row-scope">{tracker.scope === 'account' ? t('scopeAccount') : tracker.scope === 'server' ? t('scopeServer') : active?.name ?? t('localProfile')}</span></div>
+    <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${i18n.resolvedLanguage?.startsWith('en') ? 'Set' : 'Establecer'} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b></div>
+    <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
+  </article>;
+}
+
+function EmptyCard({ icon, title, body, action, onClick }: { icon: React.ReactNode; title: string; body: string; action: string; onClick: () => void }) {
+  return <div className="empty-card"><span className="empty-icon">{icon}</span><h3>{title}</h3><p>{body}</p><button className="button button-secondary" onClick={onClick}><Plus size={16} />{action}</button></div>;
+}
+
+function currentValue(tracker: Tracker, active: Character | null, entries: ProgressEntry[]): number {
+  const key = ownerKey(tracker, active?.id ?? null, active?.server ?? null, active?.region);
+  if (!key) return 0;
+  const period = periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
+  return entries.find((entry) => entry.trackerId === tracker.id && entry.ownerKey === key && entry.periodKey === period)?.value ?? 0;
+}
+
+function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void }) {
+  const t = useLocale();
+  const [celebration, setCelebration] = useState(0);
+  const displayName = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : tracker.name;
+  const displayDescription = tracker.id === CONQUEST_TRACKER_ID ? t('conquestDescription') : tracker.description || t('noDescription');
+  const percent = progressPercent(value, tracker.limit);
+  const isComplete = value >= tracker.limit;
+  const due = nextReset(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
+  const ownerLabel = tracker.scope === 'account' ? t('scopeAccount') : tracker.scope === 'server' && active?.server ? `${t('scopeServer')} · ${active.server}` : active ? tracker.scope === 'server' ? `${t('scopeServer')} · ${t('localProfile')}` : active.name : t('localProfile');
+  useEffect(() => {
+    if (!celebration) return;
+    const timeout = window.setTimeout(() => setCelebration(0), 1550);
+    return () => window.clearTimeout(timeout);
+  }, [celebration]);
+
+  async function recordProgress(delta: number) {
+    const completesTracker = delta > 0 && value < tracker.limit && value + delta >= tracker.limit;
+    const saved = onProgress(tracker, delta);
+    if (completesTracker) playCelebrationSound();
+    await saved;
+    if (completesTracker) setCelebration((current) => current + 1);
+  }
+
+  return <article className={`tracker-card${isComplete ? ' is-complete' : ''}`}>
+    {celebration > 0 && <div className="tracker-celebration" key={celebration} aria-hidden="true">
+      {fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}
+      {confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}
+    </div>}
+    <div className="tracker-card-head"><div className="tracker-glyph"><Gauge size={16} /></div><span className="scope-badge">{tracker.frequency === 'none' ? t('noReset') : tracker.frequency === 'daily' ? t('dailyReset') : t('weeklyReset')}</span>{onEdit && <button className="micro-action" aria-label={`${t('edit')} ${displayName}`} onClick={onEdit}>···</button>}</div>
+    <h3>{displayName}</h3><p className="tracker-desc">{displayDescription}</p>
+    <div className="tracker-meta"><span>{tracker.category}</span><span>{ownerLabel}</span><span className={`user-made ${tracker.provenance === 'community' ? 'community-made' : ''}`}>{tracker.provenance === 'community' ? t('statusCommunity') : t('userDefined')}</span></div>
+    <div className="progress-label"><strong>{value}<span> / {tracker.limit}</span></strong><small>{percent}%</small></div>
+    <div className={`progress-track${isComplete ? ' is-complete' : ''}`} role="progressbar" aria-label={displayName} aria-valuemin={0} aria-valuemax={tracker.limit} aria-valuenow={value} aria-valuetext={`${value} ${t('of')} ${tracker.limit}`}><span aria-hidden="true" style={{ width: `${percent}%` }} /></div>
+    <div className="tracker-card-foot"><small>{due ? `${t(tracker.resetTimeZone ? 'nextGlobalReset' : 'nextReset')}: ${due.toLocaleString()}` : t('notGameSync')}</small><div className="stepper"><button type="button" aria-label={`${t('decrease')} ${displayName}`} disabled={value <= 0} onClick={() => void recordProgress(-1)}>−</button><button type="button" aria-label={`${t('increase')} ${displayName}`} disabled={value >= tracker.limit} onClick={() => void recordProgress(1)}>+</button></div></div>
+  </article>;
+}
+
+interface TrackersPageProps { trackers: Tracker[]; characters: Character[]; progress: ProgressEntry[]; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; }
+function TrackersPage({ trackers, characters, progress, active, onProgress, onAdd, onEdit, onDelete }: TrackersPageProps) {
+  const t = useLocale();
+  const [section, setSection] = useState<ResetFrequency | 'archived'>('daily');
+  const [category, setCategory] = useState('all');
+  const activeTrackers = trackers.filter((item) => !item.archived);
+  const archivedTrackers = trackers.filter((item) => item.archived);
+  const sections: Array<{ id: ResetFrequency | 'archived'; title: string }> = [{ id: 'daily', title: t('dailySection') }, { id: 'weekly', title: t('weeklySection') }];
+  if (activeTrackers.some((item) => item.frequency === 'none')) sections.push({ id: 'none', title: t('otherTrackers') });
+  if (archivedTrackers.length) sections.push({ id: 'archived', title: i18n.resolvedLanguage?.startsWith('en') ? 'Archived' : 'Archivados' });
+  useEffect(() => {
+    if (!sections.some((item) => item.id === section)) {
+      setSection('daily');
+      setCategory('all');
+    }
+  }, [trackers, section]);
+  const sectionTrackers = section === 'archived' ? archivedTrackers : activeTrackers.filter((item) => item.frequency === section);
+  const categories = useMemo(() => [...new Set(sectionTrackers.map((item) => item.category))], [sectionTrackers]);
+  const filtered = category === 'all' ? sectionTrackers : sectionTrackers.filter((item) => item.category === category);
+  const sectionDone = sectionTrackers.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  return <>
+    <PageHeading eyebrow={t('recordProgress')} title={t('trackers')} action={t('addTracker')} onAction={onAdd} />
+    <div className="checklist-intro"><div><ShieldCheck size={17} /><span>{t('checklistSourceNotice')}</span></div><a href="https://aion2data.com/checklist" target="_blank" rel="noreferrer">{t('checklistSource')} ↗</a></div>
+    {activeTrackers.length > 0 && characters.length === 0 && <p className="inline-note checklist-character-note">{t('addCharacterToTrack')}</p>}
+    <div className="checklist-tabs" role="tablist" aria-label={t('trackers')} onKeyDown={(event) => {
+      const currentIndex = sections.findIndex((item) => item.id === section);
+      let nextIndex = currentIndex;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % sections.length;
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex + sections.length - 1) % sections.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = sections.length - 1;
+      else return;
+      event.preventDefault();
+      const nextSection = sections[nextIndex]!;
+      setSection(nextSection.id);
+      setCategory('all');
+      document.getElementById(`trackers-tab-${nextSection.id}`)?.focus();
+    }}>
+      {sections.map((item) => { const count = item.id === 'archived' ? archivedTrackers.length : activeTrackers.filter((tracker) => tracker.frequency === item.id).length; return <button id={`trackers-tab-${item.id}`} type="button" role="tab" aria-controls={`trackers-panel-${item.id}`} aria-selected={section === item.id} tabIndex={section === item.id ? 0 : -1} className={section === item.id ? 'selected' : ''} onClick={() => { setSection(item.id); setCategory('all'); }} key={item.id}><span>{item.title}</span><small aria-hidden="true">{count}</small><span className="sr-only">{count} {t('trackers').toLocaleLowerCase()}</span></button>; })}
+    </div>
+    <p className="checklist-summary" role="status">{sectionDone}/{sectionTrackers.length} {t('done').toLocaleLowerCase()}</p>
+    <div id={`trackers-panel-${section}`} role="tabpanel" aria-labelledby={`trackers-tab-${section}`} tabIndex={0}>
+      <div className="filters-row" role="group" aria-label={t('filterCategory')}><span className="filter-label">{t('filterCategory')}</span><button type="button" aria-pressed={category === 'all'} className={`filter-chip ${category === 'all' ? 'selected' : ''}`} onClick={() => setCategory('all')}>{t('all')}</button>{categories.map((item) => <button type="button" key={item} aria-pressed={category === item} className={`filter-chip ${category === item ? 'selected' : ''}`} onClick={() => setCategory(item)}>{item}</button>)}<span className="filter-count" aria-live="polite">{filtered.length} / {sectionTrackers.length}</span></div>
+      {filtered.length ? section === 'archived' ? <div className="tracker-grid">{filtered.map((tracker) => <article className="tracker-card archived-tracker" key={tracker.id}><span className="scope-badge">{i18n.resolvedLanguage?.startsWith('en') ? 'Archived' : 'Archivado'}</span><h3>{tracker.name}</h3><p className="tracker-desc">{tracker.description}</p><div className="tracker-actions"><button type="button" onClick={() => { void db.trackers.put({ ...tracker, archived: false }); }}>{i18n.resolvedLanguage?.startsWith('en') ? 'Restore' : 'Recuperar'}</button><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></article>)}</div> : <div className="tracker-grid">{filtered.map((tracker) => <div className="tracker-wrap" key={tracker.id}><TrackerCard tracker={tracker} value={currentValue(tracker, active, progress)} active={active} onProgress={onProgress} onEdit={() => onEdit(tracker)} /><div className="tracker-actions"><button type="button" onClick={() => onEdit(tracker)}>{t('edit')}</button><button type="button" className="danger-text" onClick={() => onDelete(tracker)}><Trash2 size={13} aria-hidden="true" />{t('delete')}</button></div></div>)}</div> : <EmptyCard icon={<Gauge size={21} />} title={t('noTrackers')} body={section === 'none' ? t('noUnresetTrackers') : t('noTrackersDesc')} action={t('addTracker')} onClick={onAdd} />}
+    </div>
+    {sections.filter((item) => item.id !== section).map((item) => <div key={item.id} id={`trackers-panel-${item.id}`} role="tabpanel" aria-labelledby={`trackers-tab-${item.id}`} hidden />)}
+  </>;
+}
+
+function PageHeading({ eyebrow, title, action, onAction }: { eyebrow: string; title: string; action?: string; onAction?: () => void }) {
+  return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1 tabIndex={-1}>{title}</h1></div>{action && onAction && <button className="button button-primary" onClick={onAction}><Plus size={17} aria-hidden="true" />{action}</button>}</div>;
+}
+
+function CharactersPage({ characters, activeId, onAdd, onEdit, onDelete, onSelect }: { characters: Character[]; activeId: string; onAdd: () => void; onEdit: (character: Character) => void; onDelete: (character: Character) => void; onSelect: (id: string) => void }) {
+  const t = useLocale();
+  return <>
+    <PageHeading eyebrow={t('recordProgress')} title={t('characters')} action={t('addCharacter')} onAction={onAdd} />
+    {!characters.length ? <EmptyCard icon={<Users size={21} />} title={t('noCharacters')} body={t('noCharactersDesc')} action={t('addCharacter')} onClick={onAdd} /> : <div className="character-grid">{characters.map((character) => <article key={character.id} className={`character-card ${activeId === character.id ? 'chosen' : ''}`}><div className="character-top"><div className="avatar-mark">{character.name.slice(0, 1).toUpperCase()}</div><button className="micro-action" aria-label={`${t('edit')} ${character.name}`} onClick={() => onEdit(character)}>···</button></div><h3>{character.name}</h3><p>{character.className || t('classPlaceholder')}</p><div className="character-tags"><span>{regionName(character.region, t)}</span><span>{character.server || t('unknown')}</span></div><div className="character-card-actions"><button className="button button-secondary" onClick={() => onSelect(character.id)}>{activeId === character.id ? <><Check size={15} />{t('completed')}</> : t('selectCharacter')}</button><button className="icon-button danger" aria-label={`${t('delete')} ${character.name}`} onClick={() => onDelete(character)}><Trash2 size={15} /></button></div></article>)}</div>}
+  </>;
+}
+
+function SourcesPage() {
+  const t = useLocale();
+  return <>
+    <PageHeading eyebrow={t('officialOnly')} title={t('sourceTitle')} />
+    <div className="notice-card"><div className="notice-icon"><ShieldCheck size={20} /></div><div><h2>{t('noOfficialRules')}</h2><p>{t('noOfficialRulesDesc')}</p></div><span className="pending-pill">{t('pending')}</span></div>
+    <div className="sources-heading"><h2>{t('sources')}</h2><span>{sourceRecords.filter((source) => source.type === 'official').length} {t('official').toLocaleLowerCase()} · {sourceRecords.filter((source) => source.type === 'community').length} {t('community').toLocaleLowerCase()}</span></div>
+    <div className="source-list">{sourceRecords.map((source) => { const english = i18n.resolvedLanguage?.startsWith('en'); return <article className="source-item" key={source.id}><span className={`source-kind ${source.type}`}>{source.type === 'official' ? 'NC' : t('community').toLocaleUpperCase()}</span><div className="source-copy"><div className="source-title-line"><h3>{source.title}</h3><span className={`source-status ${source.status}`}>{source.status === 'official-publication' ? t('statusOfficial') : source.status === 'internal-undocumented' ? t('statusInternal') : t('statusCommunity')}</span></div><p>{english ? source.noteEn : source.note}</p><small>{t('region')}: {english ? source.regionEn : source.region} · {t('scope')}: {english ? source.scopeEn : source.scope}</small><small className="source-validity">{t('validity')}: {english ? source.validityEn : source.validity} · {t('reviewed')} {source.reviewed}</small></div><a className="icon-button" href={source.url} target="_blank" rel="noreferrer" aria-label={`${t('open')} ${source.title}`}>↗</a></article>; })}</div>
+    <div className="footnote-card"><Clock3 size={17} /><p><b>{t('noRulesTitle')}.</b> {t('nextReset')}. Los reinicios diarios/semanales que configures solo organizan tus registros locales y respetan el calendario y la hora local del dispositivo.</p></div>
+  </>;
+}
+
+function SettingsPage({ preferences, importMode, setImportMode, savePreferences, downloadBackup, handleImport, clearData }: { preferences: Preferences; importMode: 'merge' | 'replace'; setImportMode: (mode: 'merge' | 'replace') => void; savePreferences: (patch: Partial<Preferences>) => Promise<void>; downloadBackup: () => void; handleImport: (file?: File) => void; clearData: (which: 'trackers' | 'characters' | 'all') => void }) {
+  const t = useLocale();
+  return <>
+    <PageHeading eyebrow={t('localData')} title={t('settings')} />
+    <section className="settings-card"><div className="settings-title"><div className="settings-icon"><Settings2 size={18} /></div><div><h2>{t('settings')}</h2><p>{t('localDataDesc')}</p></div></div>
+      <div className="setting-row"><div><b>{t('language')}</b><small>Español / English</small></div><select aria-label={t('language')} value={preferences.language} onChange={(event) => void savePreferences({ language: event.target.value as 'es' | 'en' })}><option value="es">Español</option><option value="en">English</option></select></div>
+      <div className="setting-row"><div><b>{t('theme')}</b><small>{preferences.theme === 'dark' ? t('dark') : t('light')}</small></div><select aria-label={t('theme')} value={preferences.theme} onChange={(event) => void savePreferences({ theme: event.target.value as 'dark' | 'light' })}><option value="dark">{t('dark')}</option><option value="light">{t('light')}</option></select></div>
+      <div className="setting-row"><div><b>{t('compact')}</b><small>{t('subtitle')}</small></div><button className={`switch ${preferences.compact ? 'on' : ''}`} role="switch" aria-checked={preferences.compact} aria-label={t('compact')} onClick={() => void savePreferences({ compact: !preferences.compact })}><span /></button></div>
+    </section>
+    <section className="settings-card"><div className="settings-title"><div className="settings-icon blue"><ArrowDownToLine size={18} /></div><div><h2>{t('localData')}</h2><p>{t('localDataDesc')}</p></div></div><div className="setting-row"><div><b>{t('export')}</b><small>JSON · schema 1</small></div><button className="button button-secondary" onClick={() => void downloadBackup()}><Download size={15} />{t('export')}</button></div>
+      <div className="setting-row"><div><b>{t('import')}</b><small>{t('importMode')}</small></div><select aria-label={t('importMode')} value={importMode} onChange={(event) => setImportMode(event.target.value as 'merge' | 'replace')}><option value="merge">{t('merge')}</option><option value="replace">{t('replace')}</option></select></div>
+      <div className="setting-row"><div><b>{t('chooseFile')}</b><small>{t('maxFile')}</small></div><label className="button button-secondary file-button"><ArrowUpFromLine size={15} />{t('import')}<input type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event.target.files?.[0]); event.target.value = ''; }} /></label></div>
+    </section>
+    <section className="settings-card"><div className="settings-title"><div className="settings-icon danger-bg"><Trash2 size={17} /></div><div><h2>{t('resetData')}</h2><p>{t('deleteWarning')}</p></div></div><div className="danger-actions"><button onClick={() => void clearData('trackers')}>{t('resetTrackers')}</button><button onClick={() => void clearData('characters')}>{t('resetCharacters')}</button><button onClick={() => void clearData('all')}><Trash2 size={14} />{t('resetAll')}</button></div></section>
+  </>;
+}
+
+function CharacterDialog({ initial, onClose, onSaved }: { initial: Character | null; onClose: () => void; onSaved: (character: Character) => void }) {
+  const t = useLocale();
+  const [form, setForm] = useState(initial ? { name: initial.name, server: initial.server, region: initial.region, className: initial.className } : initialCharacter);
+  const [error, setError] = useState('');
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const result = characterInputSchema.safeParse(form);
+    if (!result.success) { setError(t('characterError')); return; }
+    const character: Character = { ...result.data, id: initial?.id ?? id(), createdAt: initial?.createdAt ?? new Date().toISOString() };
+    await db.characters.put(character);
+    onSaved(character);
+  }
+  const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  return <Modal title={initial ? t('edit') : t('addCharacter')} onClose={onClose}><form onSubmit={(event) => void submit(event)} className="form-grid">
+    <label className="field full"><span>{t('name')} *</span><input autoFocus maxLength={60} value={form.name} onChange={(event) => set('name', event.target.value)} required /></label>
+    <label className="field"><span>{t('region')}</span><select value={form.region} onChange={(event) => set('region', event.target.value)}><option value="global">Global</option><option value="korea">Corea</option><option value="taiwan">Taiwán</option><option value="unknown">{t('unknown')}</option></select></label>
+    <label className="field"><span>{t('server')}</span><input maxLength={60} value={form.server} onChange={(event) => set('server', event.target.value)} /></label>
+    <label className="field full"><span>{t('className')}</span><input maxLength={40} placeholder={t('classPlaceholder')} value={form.className} onChange={(event) => set('className', event.target.value)} /></label>
+    {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
+  </form></Modal>;
+}
+
+function TrackerDialog({ initial, onClose, onSaved }: { initial: Tracker | null; onClose: () => void; onSaved: () => void }) {
+  const t = useLocale();
+  const [form, setForm] = useState(initial ? { name: initial.name, description: initial.description, category: initial.category, limit: initial.limit, scope: initial.scope, frequency: initial.frequency, resetTime: initial.resetTime, resetWeekday: initial.resetWeekday, resetTimeZone: initial.resetTimeZone, region: initial.region } : initialTracker);
+  const [error, setError] = useState('');
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const result = trackerInputSchema.safeParse(form);
+    if (!result.success) { setError(t('trackerError')); return; }
+    const tracker: Tracker = { ...result.data, id: initial?.id ?? id(), provenance: initial?.provenance ?? 'user-defined', sourceId: initial?.sourceId ?? null, createdAt: initial?.createdAt ?? new Date().toISOString() };
+    await db.trackers.put(tracker);
+    onSaved();
+  }
+  const set = (key: keyof typeof form, value: string | number) => setForm((current) => ({ ...current, [key]: value }));
+  return <Modal title={initial ? t('edit') : t('addTracker')} onClose={onClose}><form onSubmit={(event) => void submit(event)} className="form-grid">
+    <label className="field full"><span>{t('name')} *</span><input autoFocus maxLength={80} value={form.name} onChange={(event) => set('name', event.target.value)} required /></label>
+    <label className="field full"><span>{t('description')}</span><input maxLength={200} value={form.description} onChange={(event) => set('description', event.target.value)} /></label>
+    <label className="field"><span>{t('category')}</span><input maxLength={40} placeholder={t('categoryPlaceholder')} value={form.category} onChange={(event) => set('category', event.target.value)} required /></label>
+    <label className="field"><span>{t('limit')}</span><input type="number" min={1} max={999} value={form.limit} onChange={(event) => set('limit', Number(event.target.value))} required /></label>
+    <label className="field"><span>{t('scope')}</span><select value={form.scope} onChange={(event) => set('scope', event.target.value)}><option value="character">{t('scopeCharacter')}</option><option value="server">{t('scopeServer')}</option><option value="account">{t('scopeAccount')}</option></select></label>
+    <label className="field"><span>{t('region')}</span><select value={form.region} onChange={(event) => set('region', event.target.value)}><option value="global">Global</option><option value="korea">Corea</option><option value="taiwan">Taiwán</option><option value="unknown">{t('unknown')}</option></select></label>
+    <label className="field full"><span>{t('reset')}</span><select value={form.frequency} onChange={(event) => set('frequency', event.target.value)}><option value="none">{t('noReset')}</option><option value="daily">{t('dailyReset')}</option><option value="weekly">{t('weeklyReset')}</option></select></label>
+    {form.frequency !== 'none' && <><label className="field"><span>{t('resetTime')}</span><input type="time" value={form.resetTime} onChange={(event) => set('resetTime', event.target.value)} /></label>{form.frequency === 'weekly' && <label className="field"><span>{t('resetDay')}</span><select value={form.resetWeekday} onChange={(event) => set('resetWeekday', Number(event.target.value))}>{weekdays.map((day, i) => <option value={i} key={day}>{t(day)}</option>)}</select></label>}<p className="field-help full">Estos límites y horarios son preferencias personales para organizar el registro. La aplicación no los presenta como reglas oficiales del juego.</p></>}
+    {error && <p className="form-error full" role="alert">{error}</p>}<div className="form-actions full"><button type="button" className="button button-quiet" onClick={onClose}>{t('cancel')}</button><button className="button button-primary" type="submit"><Check size={15} />{t('save')}</button></div>
+  </form></Modal>;
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const t = useLocale();
+  const modalRef = useRef<HTMLElement | null>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = modalRef.current;
+    const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])].filter((item) => item.getAttribute('aria-hidden') !== 'true' && item.offsetParent !== null);
+    if (dialog && !dialog.contains(document.activeElement)) (focusable()[0] ?? dialog).focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { closeRef.current(); return; }
+      if (event.key !== 'Tab' || !dialog) return;
+      const items = focusable();
+      if (!items.length) { event.preventDefault(); dialog.focus(); return; }
+      const first = items[0]!;
+      const last = items.at(-1)!;
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('keydown', onKey); previousFocus?.focus(); };
+  }, []);
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><motion.section ref={modalRef} tabIndex={-1} className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}><div className="modal-head"><div><div className="eyebrow">AION 2 COMPANION</div><h2 id="modal-title">{title}</h2></div><button type="button" className="icon-button" aria-label={t('close')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div>{children}</motion.section></div>;
+}
+
+function regionName(region: Region, t: ReturnType<typeof useLocale>): string { return t(region); }
+
+export default App;

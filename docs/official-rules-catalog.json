@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-18",
+  "region": "global",
+  "ruleRecordFields": ["id", "name", "sourceUrl", "publishedAt", "reviewedAt", "region", "scope", "validFrom", "validUntil", "ruleType", "value", "notes"],
+  "rules": [],
+  "decision": "No personal progress is read from an API. The app seeds a Global daily/weekly checklist and event timers from community sources only; both are labeled unofficial and dated. Treat every game rule, cap, and reset as community-reported until an applicable NC source confirms it.",
+  "sourceRegistry": [
+    { "id": "nc-global-board", "url": "https://aion2.plaync.com/en-us/board/update/list", "kind": "official-publications", "contract": "published-notices", "reviewedAt": "2026-10-16", "region": "Global", "scope": "Rules vary by each notice", "validity": "Use the publication's validity period" },
+    { "id": "nc-developer-catalog", "url": "https://developers.plaync.com/", "kind": "official-developer-catalog", "contract": "documented-developer-apis", "reviewedAt": "2026-10-16", "region": "Global catalog reviewed", "scope": "Developer APIs", "validity": "Recheck catalog" },
+    { "id": "nc-global-community-json", "url": "https://api-global-community.plaync.com/aion2_global/board/update_en/article/6acf20d007b77e214688a7ac", "kind": "official-site-endpoint", "contract": "undocumented-internal-json", "reviewedAt": "2026-10-16", "region": "Global", "scope": "Notice content", "validity": "Endpoint availability and notice period can change" },
+    { "id": "nc-promotions-json", "url": "https://promotion.plaync.com/en-us/eventon/item?tag=MKT_PROMOTION%2CDOMAIN_AION2_GLOBAL%2CCOUNTRY_US%2C&status=RUNNING&pageSize=1&page=1", "kind": "official-site-endpoint", "contract": "undocumented-internal-json", "reviewedAt": "2026-10-16", "region": "Global / example query tagged COUNTRY_US", "scope": "Promotion dates", "validity": "Per promotion window; not a recurring timer" },
+    { "id": "community-aion2-api", "url": "https://github.com/nuriland/aion2-api", "kind": "community", "contract": "reference-only", "reviewedAt": "2026-10-16", "region": "Multiple regions per project", "scope": "Public profiles and game data", "validity": "Community project can change" },
+    { "id": "community-timers", "url": "https://aion2.grimvane.app/privacy", "kind": "community", "contract": "unofficial-third-party-service", "reviewedAt": "2026-10-16", "region": "Global/community coverage", "scope": "Community timers", "validity": "Third-party service can change" },
+    { "id": "shugo-global-timers", "url": "https://shugo.gg/timers", "kind": "community-schedule", "contract": "unofficial-community-reference", "reviewedAt": "2026-10-16", "scheduleUpdatedAt": "2026-10-09", "region": "Global; server timezone selection", "scope": "Spacetime Rift, Shugo Festival, Dimensional Invasion, Artifact Siege, scheduled bosses, weekly reset", "validity": "Recheck after game updates; NC has not published Global event schedules" },
+    { "id": "community-gartua-feed", "url": "https://www.aion2timers.com/world-boss-timer/", "kind": "community-live-kill-feed", "contract": "unofficial-player-reports-via-abysslogs", "reviewedAt": "2026-10-18", "region": "Global; server-specific reports", "scope": "Last reported kill and respawn state for Eternal Gartua and Immortal Gartua", "validity": "Live feed coverage depends on recent player reports; respawn estimates can vary; no report means no reliable countdown" },
+    { "id": "aion2data-global-checklist", "url": "https://aion2data.com/checklist", "kind": "community-client-extraction", "contract": "unofficial-reference-extracted-from-global-client-files", "reviewedAt": "2026-10-16", "clientBuild": "2.0.6.0 hotfix 1 / Steam build 25800038 / 2026-10-09", "region": "Global", "scope": "Daily and weekly activities, unlock levels, replenishment values and limits", "validity": "Snapshot; check activity availability and current in-game counters" }
+  ]
+}

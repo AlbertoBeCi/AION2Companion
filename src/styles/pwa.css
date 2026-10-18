@@ -1,0 +1,24 @@
+.pwa-prompt {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 19;
+  display: flex;
+  max-width: min(560px, calc(100vw - 32px));
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  box-shadow: 0 10px 35px rgb(0 0 0 / 28%);
+  color: var(--text);
+  font-size: 10px;
+}
+
+.pwa-prompt > svg { flex: none; color: var(--success); }
+.pwa-prompt .button { min-height: 30px; flex: none; font-size: 9px; }
+
+@media (max-width: 560px) {
+  .pwa-prompt { right: 12px; bottom: 76px; left: 12px; max-width: none; }
+}
