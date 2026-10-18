@@ -13,11 +13,11 @@
   background: var(--surface-raised);
   box-shadow: 5px 5px 0 var(--black);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 
 .pwa-prompt > svg { flex: none; color: var(--success); }
-.pwa-prompt .button { min-height: 30px; flex: none; font-size: 9px; }
+.pwa-prompt .button { min-height: 30px; flex: none; font-size: var(--fs-xs); }
 
 @media (max-width: 560px) {
   .pwa-prompt { right: 12px; bottom: 76px; left: 12px; max-width: none; }
