@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Coffee, Download, ExternalLink, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, Clock3, Coffee, Download, ExternalLink, Flame, Gauge, GripVertical, Languages, LayoutDashboard, Moon, Pencil, PictureInPicture2, Plus, RotateCcw, Settings2, ShieldCheck, Sun, TimerReset, Trash2, Users, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import { db, ensurePreferences } from './db/database';
@@ -25,6 +26,9 @@ import { clearLocalSettings } from './lib/localSettings';
 import { creatorSupportUrl } from './lib/siteConfig';
 import { formatLocalClock } from './lib/timeDisplay';
 import { trackerCopy } from './lib/trackerCopy';
+import { useDailyOverlay } from './components/useDailyOverlay';
+import { isDesktopWidget, useActiveCharacter } from './lib/desktop';
+import { WidgetAppearanceControls } from './components/WidgetAppearanceControls';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
@@ -69,11 +73,12 @@ function App() {
   const setPage = useUiStore((state) => state.setPage);
   const toast = useUiStore((state) => state.toast);
   const notify = useUiStore((state) => state.notify);
+  const dailyOverlay = useDailyOverlay((reason) => notify(t(reason === 'unsupported' ? 'dailyOverlayUnsupported' : 'dailyOverlayFailed')));
   const characters = useLiveQuery(() => db.characters.orderBy('name').toArray(), []) ?? [];
   const trackers = useLiveQuery(() => db.trackers.orderBy('createdAt').reverse().toArray(), []) ?? [];
   const progress = useLiveQuery(() => db.progress.toArray(), []) ?? [];
   const preferences = useLiveQuery(() => db.preferences.get('main'), []) ?? { id: 'main', language: 'es', theme: initialTheme(), compact: false };
-  const [activeCharacter, setActiveCharacter] = useState('');
+  const [activeCharacter, setActiveCharacter] = useActiveCharacter();
   const [modal, setModal] = useState<'character' | 'tracker' | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [editingTracker, setEditingTracker] = useState<Tracker | null>(null);
@@ -194,8 +199,10 @@ function App() {
     setModal('tracker');
   }
 
+  if (isDesktopWidget) return <DailyOverlayContent trackers={trackers} characters={characters} active={active} progress={progress} order={preferences.trackerOrder?.daily ?? []} onProgress={changeProgress} onSelectCharacter={setActiveCharacter} onClose={dailyOverlay.close} />;
+
   const pageContent = page === 'dashboard'
-    ? <Dashboard trackers={trackers} characters={characters} progress={progress} active={active} trackerOrder={preferences.trackerOrder} savePreferences={savePreferences} onProgress={changeProgress} onAddTracker={() => openTracker()} onNavigate={setPage} onSelectCharacter={setActiveCharacter} onEditTracker={openTracker} onDeleteTracker={deleteTracker} />
+    ? <Dashboard trackers={trackers} characters={characters} progress={progress} active={active} trackerOrder={preferences.trackerOrder} savePreferences={savePreferences} onProgress={changeProgress} onAddTracker={() => openTracker()} onNavigate={setPage} onSelectCharacter={setActiveCharacter} onEditTracker={openTracker} onDeleteTracker={deleteTracker} onFloatDaily={() => void dailyOverlay.open()} dailyFloating={dailyOverlay.isOpen} dailyOpening={dailyOverlay.opening} />
     : page === 'trackers'
       ? <TrackersPage trackers={trackers} characters={characters} progress={progress} active={active} onProgress={changeProgress} onAdd={() => openTracker()} onEdit={openTracker} onDelete={deleteTracker} />
       : page === 'timers'
@@ -209,9 +216,10 @@ function App() {
             : <LegalPage page={page} />;
 
   return <div className={`app-shell ${preferences.compact ? 'is-compact' : ''}`}>
+    {dailyOverlay.container && createPortal(<DailyOverlayContent trackers={trackers} characters={characters} active={active} progress={progress} order={preferences.trackerOrder?.daily ?? []} onProgress={changeProgress} onSelectCharacter={setActiveCharacter} onClose={dailyOverlay.close} />, dailyOverlay.container)}
     <a className="skip-link" href="#main-content">{t('skipToContent')}</a>
     <header className="sidebar">
-      <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><span className="brand-mark" aria-hidden="true">A</span><span><b>AION2</b><small>COMPANION</small></span></button>
+      <button className="brand" onClick={() => setPage('dashboard')} aria-label={t('home')}><img className="brand-mark app-brand-icon" src="/favicon.svg" alt="" aria-hidden="true" /><span><b>AION2</b><small>COMPANION</small></span></button>
       <div className="sidebar-caption">{t('eyebrow')}</div>
       <nav aria-label={t('mainNavigation')} className="main-nav icon-nav">
         {mainPages.map((item) => {
@@ -239,7 +247,7 @@ function App() {
     {modal === 'character' && <CharacterDialog initial={editingCharacter} onClose={() => setModal(null)} onSaved={(character) => { if (!activeCharacter) setActiveCharacter(character.id); setModal(null); notify(t('saved')); }} />}
     {modal === 'tracker' && <TrackerDialog initial={editingTracker} onClose={() => setModal(null)} onSaved={() => { setModal(null); notify(t('saved')); }} />}
     <AnimatePresence>{toast && <motion.div className="toast" role="status" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><Check size={16} aria-hidden="true" />{toast}</motion.div>}</AnimatePresence>
-    <PwaPrompt />
+    {!window.aionDesktop && <PwaPrompt />}
   </div>;
 }
 
@@ -302,8 +310,9 @@ interface DashboardProps {
   trackerOrder?: Preferences['trackerOrder']; savePreferences: (patch: Partial<Preferences>) => Promise<void>;
   onProgress: (tracker: Tracker, delta: number) => void; onAddTracker: () => void; onNavigate: (page: Page) => void;
   onSelectCharacter: (id: string) => void; onEditTracker: (tracker: Tracker) => void; onDeleteTracker: (tracker: Tracker) => void;
+  onFloatDaily: () => void; dailyFloating: boolean; dailyOpening: boolean;
 }
-function Dashboard({ trackers, characters, progress, active, trackerOrder, savePreferences, onProgress, onAddTracker, onNavigate, onSelectCharacter, onEditTracker, onDeleteTracker }: DashboardProps) {
+function Dashboard({ trackers, characters, progress, active, trackerOrder, savePreferences, onProgress, onAddTracker, onNavigate, onSelectCharacter, onEditTracker, onDeleteTracker, onFloatDaily, dailyFloating, dailyOpening }: DashboardProps) {
   const t = useLocale();
   const sortByPreference = (items: Tracker[], order: string[] = []) => {
     const positions = new Map(order.map((trackerId, index) => [trackerId, index]));
@@ -341,7 +350,7 @@ function Dashboard({ trackers, characters, progress, active, trackerOrder, saveP
     </section>
 
     <section className="companion-lists" aria-label={t('recordProgress')}>
-      <ChecklistPanel title={t('dailySection')} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
+      <ChecklistPanel headerAction={<div className="daily-overlay-launch"><button type="button" className="button button-secondary" onClick={onFloatDaily} disabled={dailyOpening} aria-label={t(dailyFloating ? 'focusDailyOverlay' : 'openDailyOverlay')}><PictureInPicture2 size={16} aria-hidden="true" />{t(dailyFloating ? 'focusDailyOverlay' : 'openDailyOverlay')}</button></div>} title={t('dailySection')} records={daily} active={active} progress={progress} onProgress={onProgress} onReorder={(ids) => reorder('daily', ids)} onAdd={onAddTracker} onEdit={onEditTracker} onDelete={onDeleteTracker} resetText={resetCountdown} emptyText={t('noTrackersDesc')} />
       <AlarmTimersPanel onManage={() => onNavigate('timers')} />
     </section>
   </div>;
@@ -366,7 +375,7 @@ function ProgressSummary({ label, value, total, characters, active, progress, tr
   return <div className="overview-progress-row"><div className="overview-progress-top"><b>{label}</b><strong>{value}/{total}</strong></div><div className="overview-progress-track"><span style={{ width: `${pct}%` }} /></div><div className="overview-progress-legend"><span><i className="legend-main" />{active?.name ?? t('mainCharacter')} <b>{pct}%</b></span><span><i className="legend-alt" />{t('alternateCharacters')} <b>{altPercent}</b></span><span><i className="legend-account" />{t('account')} <b>{accountPercent}</b></span></div></div>;
 }
 
-function ChecklistPanel({ title, records, active, progress, onProgress, onReorder, onAdd, onEdit, onDelete, resetText, emptyText }: { title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onReorder: (ids: string[]) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
+function ChecklistPanel({ title, records, active, progress, onProgress, onReorder, onAdd, onEdit, onDelete, resetText, emptyText, headerAction }: { headerAction?: React.ReactNode; title: string; records: Tracker[]; active: Character | null; progress: ProgressEntry[]; onProgress: (tracker: Tracker, delta: number) => void; onReorder: (ids: string[]) => void; onAdd: () => void; onEdit: (tracker: Tracker) => void; onDelete: (tracker: Tracker) => void; resetText: string; emptyText: string }) {
   const t = useLocale();
   const [category, setCategory] = useState('all');
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -393,6 +402,7 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
     if (target) move(trackerId, target.id);
   };
   return <section className="checklist-panel">
+    {headerAction}
     <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><NeoSelect className="panel-category-select" ariaLabel={t('filterCategory')} value={category} onChange={(value) => setCategory(String(value))} options={[{ value: 'all', label: t('all') }, ...[...new Set(records.map((tracker) => tracker.category))].map((item) => ({ value: item, label: trackerCopy(records.find((tracker) => tracker.category === item)!, i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es').category }))]} /><button type="button" className="reorder-toggle" aria-pressed={reorderEnabled} aria-label={t(reorderEnabled ? 'disableReordering' : 'enableReordering')} title={t(reorderEnabled ? 'disableReordering' : 'enableReordering')} onClick={() => { setReorderEnabled((enabled) => !enabled); setDraggingId(null); }}><GripVertical size={17} strokeWidth={3} aria-hidden="true" /></button><button type="button" aria-label={t(label === 'daily' ? 'resetAllDaily' : 'resetAllWeekly')} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={t(label === 'daily' ? 'completeVisibleDaily' : 'completeVisibleWeekly')} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
     <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} reorderEnabled={reorderEnabled} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (reorderEnabled && draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
     <span className="visually-hidden" aria-live="polite" aria-atomic="true">{reorderAnnouncement}</span>
@@ -400,7 +410,7 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
   </section>;
 }
 
-function TrackerRow({ tracker, value, reorderEnabled, dragging, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; reorderEnabled: boolean; dragging: boolean; onDragStart: () => void; onDragEnd: () => void; onDrop: () => void; onMove: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit: () => void; onDelete: () => void }) {
+function TrackerRow({ tracker, value, reorderEnabled = false, dragging = false, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; reorderEnabled?: boolean; dragging?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onDrop?: () => void; onMove?: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void; onDelete?: () => void }) {
   const t = useLocale();
   const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
   const copy = trackerCopy(tracker, language);
@@ -418,14 +428,48 @@ function TrackerRow({ tracker, value, reorderEnabled, dragging, onDragStart, onD
     await onProgress(tracker, delta);
     if (completes) setCelebration(true);
   }
-  return <article className={`companion-row${reorderEnabled ? ' reorder-enabled' : ''}${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}${dragging ? ' is-dragging' : ''}`} draggable={reorderEnabled} onDragStart={(event) => { if (!reorderEnabled) { event.preventDefault(); return; } event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tracker.id); onDragStart(); }} onDragOver={(event) => { if (reorderEnabled) event.preventDefault(); }} onDrop={(event) => { if (!reorderEnabled) return; event.preventDefault(); onDrop(); }} onDragEnd={onDragEnd}>
+  return <article className={`companion-row${reorderEnabled ? ' reorder-enabled' : ''}${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}${dragging ? ' is-dragging' : ''}`} draggable={reorderEnabled} onDragStart={(event) => { if (!reorderEnabled) { event.preventDefault(); return; } event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tracker.id); onDragStart?.(); }} onDragOver={(event) => { if (reorderEnabled) event.preventDefault(); }} onDrop={(event) => { if (!reorderEnabled) return; event.preventDefault(); onDrop?.(); }} onDragEnd={onDragEnd}>
     {celebration && <div className="tracker-celebration" aria-hidden="true">{fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}{confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}</div>}
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
-    {reorderEnabled && <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove(1); } }}><GripVertical size={15} aria-hidden="true" /></button>}
+    {reorderEnabled && <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove?.(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove?.(1); } }}><GripVertical size={15} aria-hidden="true" /></button>}
     <div className="row-copy"><div className="row-title-line"><h3 title={name}>{name}</h3></div></div>
     <div className="row-progress"><div className="row-segments" role="group" aria-label={`${name}: ${value} ${t('of')} ${tracker.limit}`}>{Array.from({ length: Math.min(tracker.limit, 20) }, (_, index) => <button type="button" key={index} className={index < value ? 'filled' : ''} aria-label={`${t('setProgress')} ${name}: ${index + 1} ${t('of')} ${tracker.limit}`} aria-current={value === index + 1 ? 'step' : undefined} onClick={() => void change(index + 1 - value)} />)}</div><b aria-hidden="true">{value}/{tracker.limit}</b><button type="button" className="row-increment" aria-label={`${t('increase')} ${name}`} title={t('increase')} disabled={complete} onClick={() => void change(1)}><Plus size={18} strokeWidth={3} aria-hidden="true" /></button></div>
-    <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button><button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button><button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button></div>
+    <div className="row-actions"><button type="button" aria-label={`${t('reset')} ${name}`} title={t('reset')} onClick={() => value && void change(-value)}><RotateCcw size={14} /></button>{onEdit && <button type="button" aria-label={`${t('edit')} ${name}`} title={t('edit')} onClick={onEdit}><Pencil size={14} /></button>}{onDelete && <button type="button" aria-label={`${t('delete')} ${name}`} title={t('delete')} onClick={onDelete}><Trash2 size={14} /></button>}</div>
   </article>;
+}
+
+function DailyOverlayContent({ trackers, characters, active, progress, order = [], onProgress, onSelectCharacter, onClose }: {
+  trackers: Tracker[]; characters: Character[]; active: Character | null; progress: ProgressEntry[]; order?: string[];
+  onProgress: (tracker: Tracker, delta: number) => void; onSelectCharacter: (id: string) => void; onClose: () => void;
+}) {
+  const t = useLocale();
+  const [, tick] = useState(0);
+  const root = useRef<HTMLElement>(null);
+  const resizeOrigin = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
+  useEffect(() => {
+    const timer = window.setInterval(() => tick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (root.current) root.current.ownerDocument.title = `${t('dailySection')} · AION2Companion`;
+  }, [t]);
+  const positions = new Map(order.map((trackerId, index) => [trackerId, index]));
+  const daily = trackers.filter((tracker) => !tracker.archived && tracker.frequency === 'daily')
+    .sort((a, b) => (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+  const completed = daily.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
+  const reset = nextReset('daily', daily[0]?.resetTime ?? '16:00', daily[0]?.resetWeekday ?? 3, new Date(), daily[0]?.resetTimeZone ?? 'Asia/Seoul');
+  return <main ref={root} className="daily-overlay">
+    <header className="daily-overlay-header" title={isDesktopWidget ? t('dragDailyWidget') : undefined}><h1>{t('dailySection')} <span className="panel-count">{completed}/{daily.length}</span></h1><div className="daily-overlay-controls">{isDesktopWidget && <><WidgetAppearanceControls /><button type="button" className="icon-button" aria-label={t('showDesktopApp')} title={t('showDesktopApp')} onClick={() => void window.aionDesktop?.showMain()}><ExternalLink size={16} aria-hidden="true" /></button></>}<button type="button" className="icon-button" aria-label={t('closeDailyOverlay')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div></header>
+    <label className="daily-overlay-character"><span className="sr-only">{t('selectCharacter')}</span><select value={active?.id ?? ''} onChange={(event) => onSelectCharacter(event.target.value)}>{characters.length ? characters.map((character) => <option key={character.id} value={character.id}>{character.name}{character.server ? ` · ${character.server}` : ''}</option>) : <option value="">{t('localProfile')}</option>}</select></label>
+    <p className="daily-overlay-reset"><RotateCcw size={13} aria-hidden="true" />{shortCountdown(reset)} · {t('dailyResetCountdown')}</p>
+    <div className="companion-list">{daily.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} onProgress={onProgress} />)}</div>
+    {!daily.length && <p className="companion-empty">{t('noTrackersDesc')}</p>}
+    {isDesktopWidget && <button type="button" className="daily-overlay-resize" aria-label={t('resizeDailyWidget')} title={t('resizeDailyWidget')}
+      onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture(event.pointerId); resizeOrigin.current = { x: event.screenX, y: event.screenY, width: window.outerWidth, height: window.outerHeight }; }}
+      onPointerMove={(event) => { const start = resizeOrigin.current; if (start) window.aionDesktop?.resizeDaily(start.width + event.screenX - start.x, start.height + event.screenY - start.y); }}
+      onPointerUp={() => { resizeOrigin.current = null; }} onLostPointerCapture={() => { resizeOrigin.current = null; }}
+      onKeyDown={(event) => { const delta = { ArrowRight: [20, 0], ArrowLeft: [-20, 0], ArrowDown: [0, 20], ArrowUp: [0, -20] }[event.key]; if (delta) { event.preventDefault(); window.aionDesktop?.resizeDaily(window.outerWidth + delta[0]!, window.outerHeight + delta[1]!); } }} />}
+  </main>;
 }
 
 function EmptyCard({ icon, title, body, action, onClick }: { icon: React.ReactNode; title: string; body: string; action: string; onClick: () => void }) {

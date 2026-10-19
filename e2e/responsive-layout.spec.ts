@@ -61,6 +61,7 @@ test('summary trackers show only their names and keep a custom order after reloa
   await expect(first.locator('.row-title-line')).toHaveText('Conquista');
   await expect(first.locator('.row-description, .row-scope, .row-tag, .row-category')).toHaveCount(0);
 
+  await page.getByRole('button', { name: 'Activar reordenación de contadores' }).click();
   await first.locator('.row-drag-handle').focus();
   await page.keyboard.press('ArrowDown');
   await expect(rows.nth(0).locator('.row-title-line')).toHaveText('Nightmare');

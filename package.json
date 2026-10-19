@@ -1,7 +1,7 @@
 {
   "name": "aion2-companion",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "desktop": "npm run build && electron .",
+    "desktop:pack": "npm run build && electron-builder --win portable --x64 --publish never",
+    "desktop:test": "npm run build && node desktop/smoke-test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
@@ -35,6 +38,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3",
     "jsdom": "^27.0.0",
     "tailwindcss": "^4.1.16",
     "typescript": "~5.9.3",
@@ -42,5 +47,39 @@
     "vite-plugin-pwa": "^1.1.0",
     "vitest": "^3.2.4",
     "workbox-window": "^7.4.1"
+  },
+  "main": "desktop/main.cjs",
+  "description": "Seguimiento local de AION 2 con un widget de diarias para el escritorio.",
+  "build": {
+    "appId": "com.aion2companion.desktop",
+    "productName": "AION2 Companion",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "package.json",
+      "!node_modules/**/*",
+      "desktop/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signExecutable": false,
+      "icon": "desktop/icon.ico"
+    },
+    "portable": {
+      "artifactName": "AION2-Companion-${version}-Windows.exe",
+      "useZip": true
+    },
+    "electronDist": "node_modules/electron/dist"
   }
 }
