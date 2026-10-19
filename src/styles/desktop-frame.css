@@ -1,0 +1,33 @@
+.desktop-app-root, .desktop-app-root body { height: 100%; overflow: hidden; }
+.desktop-app-root #root { height: 100%; min-height: 0; }
+.desktop-app-root, .desktop-app-root * { scrollbar-width: none; }
+.desktop-app-root::-webkit-scrollbar, .desktop-app-root ::-webkit-scrollbar { display: none; }
+.desktop-main-frame { --desktop-titlebar-height: 44px; display: grid; grid-template-rows: var(--desktop-titlebar-height) minmax(0, 1fr); width: 100%; height: 100%; overflow: hidden; border: var(--border); background: var(--surface); }
+.desktop-main-frame[data-maximized="true"] { border: 0; }
+.desktop-titlebar { z-index: 110; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 8px 0 14px; border-bottom: var(--border); background: var(--surface); color: var(--ink); -webkit-app-region: drag; app-region: drag; user-select: none; }
+.desktop-titlebar-name { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.desktop-titlebar-name img { flex: none; }
+.desktop-titlebar-name b { font-family: var(--font-display); font-size: 12px; letter-spacing: .02em; white-space: nowrap; }
+.desktop-titlebar-name b>span { margin-left: 3px; font-weight: 500; }
+.desktop-titlebar-page { overflow: hidden; margin-left: 8px; padding-left: 14px; border-left: 1px solid var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.desktop-window-controls { display: flex; flex: none; align-items: center; gap: 6px; -webkit-app-region: no-drag; app-region: no-drag; }
+.desktop-window-controls button { display: grid; width: 34px; height: 28px; min-height: 0; padding: 0; place-items: center; border: var(--border); border-radius: 5px; background: var(--surface); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+.desktop-window-controls button:hover { background: var(--yellow); color: var(--on-accent); }
+.desktop-window-controls .desktop-window-close:hover { background: var(--coral); color: var(--on-accent); }
+.desktop-window-controls button:active { transform: translate(2px, 2px); box-shadow: none; }
+.desktop-main-content { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.desktop-app-root .modal-backdrop { top: 46px; }
+.desktop-app-root .skip-link { top: 54px; }
+.desktop-resize-edge { position: fixed; z-index: 120; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; touch-action: none; -webkit-app-region: no-drag; app-region: no-drag; }
+.desktop-resize-n, .desktop-resize-s { right: 14px; left: 14px; height: 5px; cursor: ns-resize; }
+.desktop-resize-n { top: 0; }
+.desktop-resize-s { bottom: 0; }
+.desktop-resize-e, .desktop-resize-w { top: 14px; bottom: 14px; width: 5px; cursor: ew-resize; }
+.desktop-resize-e { right: 0; }
+.desktop-resize-w { left: 0; }
+.desktop-resize-ne, .desktop-resize-se, .desktop-resize-sw, .desktop-resize-nw { width: 14px; height: 14px; }
+.desktop-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+.desktop-resize-se { right: 0; bottom: 0; cursor: nwse-resize; }
+.desktop-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.desktop-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+.desktop-resize-se::after { position: absolute; right: 4px; bottom: 4px; width: 6px; height: 6px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); content: ''; }

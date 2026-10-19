@@ -51,6 +51,7 @@
   font-weight: 700;
   line-height: var(--lh-tight);
 }
+.brand-mark.app-brand-icon { padding: 0; border: 0; border-radius: 8px; background: transparent; box-shadow: none; object-fit: contain; }
 .brand b { display: block; color: inherit; font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700; line-height: var(--lh-input); letter-spacing: var(--tracking-normal); }
 .brand small { display: block; margin-top: 3px; color: var(--lime); font-family: var(--font-display); font-size: var(--fs-xs); font-weight: 700; line-height: var(--lh-input); letter-spacing: var(--tracking-wide); }
 .sidebar .brand:hover:not(:disabled),.sidebar .brand:active:not(:disabled) { transform: none; background: transparent; color: var(--on-section-dark); box-shadow: none; }

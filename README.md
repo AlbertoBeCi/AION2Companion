@@ -17,6 +17,7 @@
 ## ✨ Qué puedes hacer
 
 - ✅ Llevar contadores diarios y semanales y registrar el progreso a mano.
+- 🪟 Abrir las **Diarias flotantes** desde Resumen en una ventana movible y redimensionable, siempre visible, con progreso y personaje sincronizados. Requiere un navegador de escritorio compatible con Document Picture-in-Picture (como Chrome o Edge) y mantener abierta la app.
 - 👤 Usar un perfil local o mantener el progreso separado por personaje, incluso en el mismo servidor.
 - ⏱️ Consultar horarios comunitarios de jefes y eventos, y la cuenta atrás semanal.
 - 🔔 Activar alarmas que funcionan desde cualquier sección, elegir la antelación (1–60 minutos) y cambiar el sonido o usar un audio propio.
@@ -58,6 +59,25 @@ npm run build
 
 La compilación de producción queda en `dist/`. GitHub Actions también ejecuta pruebas y compilación en cambios dirigidos a `main` y en pull requests.
 
+## 🪟 Widget de escritorio para Windows
+
+Web y escritorio comparten este repositorio y los mismos componentes. El código de escritorio está en `desktop/` y los ejecutables descargables se publican en [Releases](https://github.com/AlbertoBeCi/AION2Companion/releases), fuera del código fuente.
+
+La ventana principal también usa una cabecera propia con el estilo de la app: arrastrar para mover, minimizar, maximizar/restaurar y cerrar. Puedes redimensionar desde sus bordes o esquinas. Las barras de desplazamiento están ocultas; la rueda del ratón y el teclado siguen permitiendo navegar. Web, PWA y escritorio usan el mismo icono.
+
+La versión de escritorio muestra las diarias **sin barra del navegador ni marco de Windows**, en una ventana siempre visible. Se abre desde **Resumen → Diarias flotantes**. Arrastra su cabecera para moverla y la esquina inferior derecha para cambiar el tamaño. El botón junto a cerrar recupera la app principal; puedes minimizarla y seguir usando el widget. El fondo es transparente y no se muestra barra de desplazamiento; la rueda del ratón permite recorrer las listas largas. En el botón de apariencia de la cabecera puedes ajustar la opacidad entre 25% y 100%. Se recuerdan la opacidad, la posición, el tamaño y el personaje seleccionado.
+
+El ejecutable portátil se genera en `release/AION2-Companion-0.1.0-Windows.exe` y no necesita instalarse ni arrancar un servidor local. Los datos se guardan en `%APPDATA%/AION2Companion`, compartidos entre la app de escritorio y el widget. El navegador guarda sus datos por separado: usa **Ajustes → Exportar copia** en la web y **Ajustes → Importar copia** en escritorio para trasladarlos. El progreso posterior se sincroniza entre las dos ventanas de escritorio.
+
+```sh
+npm install
+npm run desktop        # compilar y abrir la app de escritorio
+npm run desktop:test   # comprobar las ventanas con un perfil de prueba aislado
+npm run desktop:pack   # generar el ejecutable portátil de Windows x64
+```
+
+Para superponer el widget al juego, usa modo ventana o ventana sin bordes si la pantalla completa exclusiva lo oculta. Cerrar el widget deja la app principal abierta; cerrar la app principal cierra ambas ventanas. Los feeds siguen necesitando conexión a internet.
+
 ## 🧰 Stack
 
 React · TypeScript · Vite · Dexie/IndexedDB · Zustand · i18next · Lucide · Motion · PWA/Workbox · Netlify Functions.
@@ -98,6 +118,7 @@ Si te resulta útil, puedes [invitarme a un café en Ko-fi](https://ko-fi.com/S0
 ## ✨ What you can do
 
 - ✅ Track daily and weekly counters and record progress manually.
+- 🪟 Open **Floating daily** from Overview in a movable, resizable, always-on-top window with synchronized progress and character selection. Requires a desktop browser supporting Document Picture-in-Picture (such as Chrome or Edge), with the app kept open.
 - 👤 Use a local profile or track each character independently, even on the same server.
 - ⏱️ View community schedules for bosses and events, plus the weekly countdown.
 - 🔔 Enable alerts across every app page, choose the lead time (1–60 minutes), and select a sound or upload your own audio.

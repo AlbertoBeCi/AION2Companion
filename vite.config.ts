@@ -30,16 +30,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), VitePWA({
     registerType: 'prompt',
     injectRegister: false,
-    includeAssets: ['favicon.svg'],
+    includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
     manifest: {
       name: 'AION 2 Companion', short_name: 'AION 2', description: 'Seguimiento manual y local para AION 2.',
       theme_color: '#2855F5', background_color: '#111111', lang: 'es', display: 'standalone', start_url: '/',
       icons: [
-        { src: '/favicon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
-        { src: '/favicon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
       ]
     },
-    workbox: { navigateFallback: '/', globPatterns: ['**/*.{js,css,html,svg,woff2,mp3}'], cleanupOutdatedCaches: true }
+    workbox: { navigateFallback: '/', globPatterns: ['**/*.{js,css,html,svg,png,woff2,mp3}'], cleanupOutdatedCaches: true }
   })],
   build: {
     rollupOptions: {
