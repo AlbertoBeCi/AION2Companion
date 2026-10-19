@@ -29,6 +29,7 @@ import { trackerCopy } from './lib/trackerCopy';
 import { useDailyOverlay } from './components/useDailyOverlay';
 import { isDesktopWidget, useActiveCharacter } from './lib/desktop';
 import { WidgetAppearanceControls } from './components/WidgetAppearanceControls';
+import { useWidgetTheme } from './lib/widgetAppearance';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
@@ -410,7 +411,7 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
   </section>;
 }
 
-function TrackerRow({ tracker, value, reorderEnabled = false, dragging = false, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; reorderEnabled?: boolean; dragging?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onDrop?: () => void; onMove?: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void; onDelete?: () => void }) {
+function TrackerRow({ tracker, value, hud = false, reorderEnabled = false, dragging = false, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; hud?: boolean; reorderEnabled?: boolean; dragging?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onDrop?: () => void; onMove?: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void; onDelete?: () => void }) {
   const t = useLocale();
   const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
   const copy = trackerCopy(tracker, language);
@@ -429,6 +430,7 @@ function TrackerRow({ tracker, value, reorderEnabled = false, dragging = false, 
     if (completes) setCelebration(true);
   }
   return <article className={`companion-row${reorderEnabled ? ' reorder-enabled' : ''}${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}${dragging ? ' is-dragging' : ''}`} draggable={reorderEnabled} onDragStart={(event) => { if (!reorderEnabled) { event.preventDefault(); return; } event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tracker.id); onDragStart?.(); }} onDragOver={(event) => { if (reorderEnabled) event.preventDefault(); }} onDrop={(event) => { if (!reorderEnabled) return; event.preventDefault(); onDrop?.(); }} onDragEnd={onDragEnd}>
+    {hud && <div className="row-hud-progress" aria-hidden="true"><span style={{ width: `${progressPercent(value, tracker.limit)}%` }} /></div>}
     {celebration && <div className="tracker-celebration" aria-hidden="true">{fireworkBursts.map((burst) => <span className={`firework-burst ${burst.className}`} key={burst.className}>{burst.particles.map((particle, index) => <i key={index} style={{ '--firework-angle': particle.angle, '--firework-distance': particle.distance, '--firework-delay': burst.delay } as React.CSSProperties} />)}</span>)}{confettiPieces.map((piece, index) => <i className="confetti-piece" key={index} style={{ '--confetti-x': piece.x, '--confetti-delay': piece.delay, '--confetti-rotation': piece.rotation } as React.CSSProperties} />)}</div>}
     <button type="button" className="row-check" role="checkbox" aria-checked={complete} aria-label={`${complete ? t('decrease') : t('complete')} ${name}`} onClick={() => void change(complete ? -value : tracker.limit - value)}>{complete && <Check size={15} />}</button>
     {reorderEnabled && <button type="button" className="row-drag-handle" aria-label={`${t('reorder')} ${name}`} title={`${t('reorder')} ${name}`} onKeyDown={(event) => { if (event.key === 'ArrowUp') { event.preventDefault(); onMove?.(-1); } else if (event.key === 'ArrowDown') { event.preventDefault(); onMove?.(1); } }}><GripVertical size={15} aria-hidden="true" /></button>}
@@ -443,6 +445,7 @@ function DailyOverlayContent({ trackers, characters, active, progress, order = [
   onProgress: (tracker: Tracker, delta: number) => void; onSelectCharacter: (id: string) => void; onClose: () => void;
 }) {
   const t = useLocale();
+  const [widgetTheme, setWidgetTheme] = useWidgetTheme();
   const [, tick] = useState(0);
   const root = useRef<HTMLElement>(null);
   const resizeOrigin = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -458,11 +461,12 @@ function DailyOverlayContent({ trackers, characters, active, progress, order = [
     .sort((a, b) => (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER));
   const completed = daily.filter((tracker) => currentValue(tracker, active, progress) >= tracker.limit).length;
   const reset = nextReset('daily', daily[0]?.resetTime ?? '16:00', daily[0]?.resetWeekday ?? 3, new Date(), daily[0]?.resetTimeZone ?? 'Asia/Seoul');
-  return <main ref={root} className="daily-overlay">
-    <header className="daily-overlay-header" title={isDesktopWidget ? t('dragDailyWidget') : undefined}><h1>{t('dailySection')} <span className="panel-count">{completed}/{daily.length}</span></h1><div className="daily-overlay-controls">{isDesktopWidget && <><WidgetAppearanceControls /><button type="button" className="icon-button" aria-label={t('showDesktopApp')} title={t('showDesktopApp')} onClick={() => void window.aionDesktop?.showMain()}><ExternalLink size={16} aria-hidden="true" /></button></>}<button type="button" className="icon-button" aria-label={t('closeDailyOverlay')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div></header>
+  return <main ref={root} className="daily-overlay" data-widget-theme={widgetTheme}>
+    <header className="daily-overlay-header" title={isDesktopWidget ? t('dragDailyWidget') : undefined}><h1>{t('dailySection')} <span className="panel-count">{completed}/{daily.length}</span></h1><div className="daily-overlay-controls"><WidgetAppearanceControls theme={widgetTheme} onThemeChange={setWidgetTheme} />{isDesktopWidget && <button type="button" className="icon-button" aria-label={t('showDesktopApp')} title={t('showDesktopApp')} onClick={() => void window.aionDesktop?.showMain()}><ExternalLink size={16} aria-hidden="true" /></button>}<button type="button" className="icon-button" aria-label={t('closeDailyOverlay')} onClick={onClose}><X size={18} aria-hidden="true" /></button></div></header>
+    {widgetTheme === 'game' && <div className="daily-hud-progress" role="progressbar" aria-label={t('dailySection')} aria-valuemin={0} aria-valuemax={daily.length || 1} aria-valuenow={completed}><span style={{ width: `${progressPercent(completed, daily.length || 1)}%` }} /><b aria-hidden="true">{progressPercent(completed, daily.length || 1)}%</b></div>}
     <label className="daily-overlay-character"><span className="sr-only">{t('selectCharacter')}</span><select value={active?.id ?? ''} onChange={(event) => onSelectCharacter(event.target.value)}>{characters.length ? characters.map((character) => <option key={character.id} value={character.id}>{character.name}{character.server ? ` · ${character.server}` : ''}</option>) : <option value="">{t('localProfile')}</option>}</select></label>
     <p className="daily-overlay-reset"><RotateCcw size={13} aria-hidden="true" />{shortCountdown(reset)} · {t('dailyResetCountdown')}</p>
-    <div className="companion-list">{daily.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} onProgress={onProgress} />)}</div>
+    <div className="companion-list">{daily.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} hud={widgetTheme === 'game'} value={currentValue(tracker, active, progress)} onProgress={onProgress} />)}</div>
     {!daily.length && <p className="companion-empty">{t('noTrackersDesc')}</p>}
     {isDesktopWidget && <button type="button" className="daily-overlay-resize" aria-label={t('resizeDailyWidget')} title={t('resizeDailyWidget')}
       onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture(event.pointerId); resizeOrigin.current = { x: event.screenX, y: event.screenY, width: window.outerWidth, height: window.outerHeight }; }}

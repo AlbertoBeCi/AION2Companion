@@ -61,17 +61,33 @@ test('floating daily stays synchronized across navigation, characters and appear
   const themeBefore = await floating.locator('html').getAttribute('data-theme');
   await page.locator('.top-actions').getByRole('button', { name: /Switch to .* mode/i }).click();
   await expect(floating.locator('html')).not.toHaveAttribute('data-theme', themeBefore!);
+  await floating.locator('.widget-appearance summary').click();
+  await floating.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('game');
+  await expect(floating.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
+  await expect(floating.getByRole('heading', { name: 'Duty Missions', exact: true })).toHaveCSS('color', 'rgb(222, 216, 186)');
+  await expect(floating.getByRole('progressbar', { name: 'Daily', exact: true })).toHaveAttribute('aria-valuenow', '1');
+  await floating.locator('.widget-appearance summary').click();
+  await expect(page.locator('.daily-hud-progress')).toHaveCount(0);
   for (const width of [280, 440, 650]) {
     await floating.setViewportSize({ width, height: 560 });
     expect(await floating.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     if (width === 440) expect((await floating.locator('.companion-row').first().boundingBox())!.height).toBeLessThan(80);
+    await floating.locator('.widget-appearance summary').click();
+    await expect(floating.locator('.widget-appearance-panel')).toBeInViewport();
+    await floating.locator('.widget-appearance summary').click();
     await floating.screenshot({ path: `test-results/daily-overlay-${width}.png`, fullPage: true });
   }
   await floating.getByRole('button', { name: 'Close floating daily' }).click();
   await expect(page.getByRole('button', { name: 'Floating daily', exact: true })).toBeVisible();
   const reopened = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Floating daily', exact: true }).click();
-  await expect((await reopened).getByRole('heading', { name: 'Duty Missions' })).toBeVisible();
+  const restored = await reopened;
+  await expect(restored.getByRole('heading', { name: 'Duty Missions' })).toBeVisible();
+  await expect(restored.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
+  await restored.locator('.widget-appearance summary').click();
+  await restored.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('companion');
+  await expect(restored.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'companion');
+  await expect(restored.locator('.row-hud-progress')).toHaveCount(0);
 });
 
 test('unsupported browsers and denied opening show an actionable message', async ({ page }) => {

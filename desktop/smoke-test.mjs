@@ -60,11 +60,18 @@ try {
   await widget.locator('.widget-appearance summary').click();
   await widget.getByRole('slider', { name: 'Opacidad' }).fill('55');
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((win) => win.webContents.getURL().includes('widget=daily')).getOpacity())).toBeCloseTo(0.55, 1);
+  await widget.getByRole('combobox', { name: 'Tema', exact: true }).selectOption('game');
+  await expect(widget.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
+  await expect(widget.locator('.daily-overlay h3').first()).toHaveCSS('color', 'rgb(244, 204, 98)');
+  await expect(widget.locator('body')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(widget.locator('.widget-appearance-panel')).toBeInViewport();
+  await widget.screenshot({ path: path.join(output, 'daily-game-settings.png'), omitBackground: true });
   await widget.locator('.widget-appearance summary').click();
 
   const duty = (page) => page.locator('.companion-row').filter({ has: page.getByRole('heading', { name: 'Misiones de Duty', exact: true }) });
   await duty(widget).getByRole('button', { name: 'Aumentar progreso Misiones de Duty' }).click();
   await expect(duty(main).locator('.row-progress>b')).toHaveText('1/5');
+  await expect(duty(widget).locator('.row-hud-progress>span')).toHaveAttribute('style', 'width: 20%;');
   await duty(main).getByRole('button', { name: 'Aumentar progreso Misiones de Duty' }).click();
   await expect(duty(widget).locator('.row-progress>b')).toHaveText('2/5');
   await main.getByRole('button', { name: 'Personajes', exact: true }).first().click();
@@ -81,8 +88,10 @@ try {
   await expect(duty(main).locator('.row-progress>b')).toHaveText('5/5');
   await main.locator('.theme-toggle').click();
   await expect(widget.locator('html')).toHaveAttribute('data-theme', await main.locator('html').getAttribute('data-theme'));
+  await expect(widget.locator('.daily-overlay h3').first()).toHaveCSS('color', 'rgb(244, 204, 98)');
 
   // Minimize the full app and keep using the independent always-on-top widget.
+  await widget.screenshot({ path: path.join(output, 'daily-game-progress.png'), omitBackground: true });
   await main.getByRole('button', { name: 'Minimizar la app', exact: true }).click();
   await duty(widget).getByRole('button', { name: 'Reinicio Misiones de Duty' }).click();
   await expect(duty(widget).locator('.row-progress>b')).toHaveText('0/5');
@@ -98,6 +107,9 @@ try {
     await widget.evaluate((value) => window.aionDesktop.resizeDaily(value, 600), width);
     await expect.poll(() => widget.evaluate(() => window.outerWidth)).toBe(width);
     await expect.poll(() => widget.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await widget.locator('.widget-appearance summary').click();
+    await expect(widget.locator('.widget-appearance-panel')).toBeInViewport();
+    await widget.locator('.widget-appearance summary').click();
   }
   await widget.evaluate(() => window.aionDesktop.resizeDaily(440, 600));
   await expect.poll(() => widget.evaluate(() => window.outerWidth)).toBe(440);
@@ -113,11 +125,18 @@ try {
   const reopened = app.waitForEvent('window');
   await main.getByRole('button', { name: 'Diarias flotantes', exact: true }).click();
   const restored = await reopened;
+  await expect(restored.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
   await expect(restored.getByRole('combobox')).toHaveValue(await widgetValue(main));
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((win) => win.webContents.getURL().includes('widget=daily')).getOpacity())).toBeCloseTo(0.55, 1);
   await expect.poll(() => restored.evaluate(() => window.outerWidth)).toBe(420);
   const bounds = JSON.parse(await readFile(path.join(output, 'profile', 'daily-window.json'), 'utf8'));
   expect(bounds.width).toBe(420);
+  await restored.locator('.widget-appearance summary').click();
+  await restored.getByRole('combobox', { name: 'Tema', exact: true }).selectOption('companion');
+  await expect(restored.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'companion');
+  expect(await restored.locator('.companion-row').first().evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  await restored.getByRole('button', { name: 'Restaurar al 100%' }).click();
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((win) => win.webContents.getURL().includes('widget=daily')).getOpacity())).toBeCloseTo(1, 1);
   expect(errors).toEqual([]);
   const applicationClosed = app.waitForEvent('close');
   await main.getByRole('button', { name: 'Cerrar la app', exact: true }).click();
