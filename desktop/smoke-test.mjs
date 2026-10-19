@@ -68,6 +68,28 @@ try {
   await widget.screenshot({ path: path.join(output, 'daily-game-settings.png'), omitBackground: true });
   await widget.locator('.widget-appearance summary').click();
 
+  // A completion in the main window waits for that window's actual audio end.
+  const conquest = widget.locator('.companion-row').filter({ hasText: 'Conquista' });
+  const mainConquest = main.locator('.companion-row').filter({ hasText: 'Conquista' });
+  const following = widget.locator('.companion-row').filter({ hasText: 'Nightmare' });
+  const firstTop = (await conquest.boundingBox()).y;
+  const followingTop = (await following.boundingBox()).y;
+  await mainConquest.getByRole('checkbox').click();
+  await expect(conquest.locator('.tracker-celebration')).toBeVisible();
+  await expect(conquest.locator('..')).toHaveAttribute('data-completion-phase', 'waiting');
+  await expect.poll(() => widget.evaluate(() => JSON.parse(localStorage.getItem('aion2-completion-playback') ?? '{}').endedAt ?? null), { timeout: 30_000 }).not.toBeNull();
+  await expect(conquest.locator('..')).toHaveAttribute('data-completion-phase', 'waiting');
+  await expect(conquest.locator('..')).toHaveCSS('opacity', '1');
+  await expect.poll(() => conquest.locator('..').getAttribute('data-completion-phase'), { intervals: [25], timeout: 4000 }).toBe('leaving');
+  await expect.poll(() => conquest.locator('..').evaluate((element) => Number(getComputedStyle(element).opacity)), { intervals: [25] }).toBeLessThan(.9);
+  expect((await following.boundingBox()).y).toBeLessThanOrEqual(followingTop);
+  await widget.screenshot({ path: path.join(output, 'daily-fading.png'), omitBackground: true });
+  await expect(conquest).toHaveCount(0);
+  expect((await following.boundingBox()).y).toBeCloseTo(firstTop, 0);
+  await expect(mainConquest.locator('.row-progress>b')).toHaveText('2/2');
+  await mainConquest.getByRole('button', { name: 'Reinicio Conquista', exact: true }).click();
+  await expect(conquest.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+
   const duty = (page) => page.locator('.companion-row').filter({ has: page.getByRole('heading', { name: 'Misiones de Duty', exact: true }) });
   await duty(widget).getByRole('button', { name: 'Aumentar progreso Misiones de Duty' }).click();
   await expect(duty(main).locator('.row-progress>b')).toHaveText('1/5');

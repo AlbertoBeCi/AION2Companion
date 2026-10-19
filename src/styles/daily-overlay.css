@@ -3,6 +3,8 @@
 .daily-overlay-root { min-width: 0; }
 .daily-overlay-body { min-width: 0; margin: 0; padding: 12px; overflow-x: hidden; background: var(--surface); color: var(--ink); }
 .daily-overlay { min-width: 0; }
+.daily-overlay[data-widget-theme] .companion-list.floating-daily-list { gap: 0; }
+.floating-daily-row { min-width: 0; overflow: clip; }
 .daily-overlay-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
 .daily-overlay-header h1 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: var(--fs-xl); }
 .daily-overlay-controls { position: relative; display: flex; gap: 8px; }

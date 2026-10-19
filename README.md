@@ -19,6 +19,7 @@
 - ✅ Llevar contadores diarios y semanales y registrar el progreso a mano.
 - 🪟 Abrir las **Diarias flotantes** desde Resumen en una ventana movible y redimensionable, siempre visible, con progreso y personaje sincronizados. Requiere un navegador de escritorio compatible con Document Picture-in-Picture (como Chrome o Edge) y mantener abierta la app.
 - 🎮 Elegir **Apariencia del widget → Tema → AION · Interfaz del juego** para usar tarjetas translúcidas con títulos dorados y barra de progreso roja. La elección se guarda y puedes volver a Companion cuando quieras; en escritorio está junto al ajuste de opacidad.
+- 🎉 Al completar una misión, la superpuesta conserva el sonido y los confetis; dos segundos después de terminar el audio, la tarjeta se desvanece y las demás ocupan el hueco suavemente. El progreso sigue en Resumen. Las tarjetas vuelven al reiniciar el progreso o empezar un nuevo día.
 - 👤 Usar un perfil local o mantener el progreso separado por personaje, incluso en el mismo servidor.
 - ⏱️ Consultar horarios comunitarios de jefes y eventos, y la cuenta atrás semanal.
 - 🔔 Activar alarmas que funcionan desde cualquier sección, elegir la antelación (1–60 minutos) y cambiar el sonido o usar un audio propio.
@@ -121,6 +122,7 @@ Si te resulta útil, puedes [invitarme a un café en Ko-fi](https://ko-fi.com/S0
 - ✅ Track daily and weekly counters and record progress manually.
 - 🪟 Open **Floating daily** from Overview in a movable, resizable, always-on-top window with synchronized progress and character selection. Requires a desktop browser supporting Document Picture-in-Picture (such as Chrome or Edge), with the app kept open.
 - 🎮 Choose **Widget appearance → Theme → AION · Game interface** for translucent cards with gold titles and a red progress bar. Your choice is remembered and Companion remains available; the desktop widget also keeps its opacity control here.
+- 🎉 Completed floating missions keep their sound and confetti. Two seconds after the audio ends, the card fades and the remaining cards smoothly close the gap. Progress stays in Overview; cards return when reset or on a new day.
 - 👤 Use a local profile or track each character independently, even on the same server.
 - ⏱️ View community schedules for bosses and events, plus the weekly countdown.
 - 🔔 Enable alerts across every app page, choose the lead time (1–60 minutes), and select a sound or upload your own audio.

@@ -1,5 +1,69 @@
 import { expect, test } from '@playwright/test';
 
+test('completed floating missions wait for audio, then fade and close the gap smoothly', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    const OriginalAudio = window.Audio;
+    window.Audio = function (source?: string) {
+      const audio = new OriginalAudio(source);
+      if (source === '/sounds/counter-complete.mp3') {
+        audio.play = async () => {};
+        (window as Window & { completionTestAudio?: HTMLAudioElement }).completionTestAudio = audio;
+      }
+      return audio;
+    } as typeof Audio;
+  });
+  await page.clock.install({ time: new Date('2026-10-19T12:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-19T12:00:01Z'));
+  await page.goto('/');
+  await page.clock.runFor(1000);
+  await page.evaluate(() => Object.defineProperty(window, 'documentPictureInPicture', { configurable: true, value: {
+    requestWindow: async () => window.open('about:blank', '', 'width=440,height=560'),
+  } }));
+  const opened = context.waitForEvent('page');
+  await page.getByRole('button', { name: 'Diarias flotantes', exact: true }).click();
+  const floating = await opened;
+  const first = floating.locator('.companion-row').filter({ hasText: 'Conquista' });
+  const next = floating.locator('.companion-row').filter({ has: floating.getByRole('heading', { name: 'Nightmare', exact: true }) });
+  const originalTop = (await first.boundingBox())!.y;
+  const nextTop = (await next.boundingBox())!.y;
+  await first.getByRole('checkbox').click();
+  await expect(first.locator('.tracker-celebration')).toBeVisible();
+  await page.clock.runFor(5000);
+  await expect(first).toBeVisible();
+  await expect(first.locator('..')).toHaveAttribute('data-completion-phase', 'waiting');
+  await expect(first.locator('.tracker-celebration')).toHaveCount(0);
+  await page.evaluate(() => (window as Window & { completionTestAudio: HTMLAudioElement }).completionTestAudio.dispatchEvent(new Event('ended')));
+  await page.clock.runFor(1999);
+  await expect(first).toBeVisible();
+  await expect(first.locator('..')).toHaveAttribute('data-completion-phase', 'waiting');
+  await expect(first.locator('..')).toHaveCSS('opacity', '1');
+  // Let the browser's compositor animate in real time after the exact timer check.
+  await page.clock.resume();
+  await expect.poll(() => first.locator('..').getAttribute('data-completion-phase'), { intervals: [25] }).toBe('leaving');
+  await expect.poll(async () => (await next.boundingBox())!.y, { intervals: [25] }).toBeLessThan(nextTop - 1);
+  const fading = await first.locator('..').evaluate((element) => Number(getComputedStyle(element).opacity));
+  expect(fading).toBeGreaterThan(0);
+  expect(fading).toBeLessThan(1);
+  const movingTop = (await next.boundingBox())!.y;
+  expect(movingTop).toBeLessThan(nextTop);
+  expect(movingTop).toBeGreaterThan(originalTop);
+  await floating.screenshot({ path: 'test-results/daily-fading.png' });
+  await expect(first).toHaveCount(0);
+  expect((await next.boundingBox())!.y).toBeCloseTo(originalTop, 0);
+  const mainFirst = page.locator('.companion-row').filter({ has: page.getByRole('heading', { name: 'Conquista', exact: true }) });
+  await expect(mainFirst.locator('.row-progress>b')).toHaveText('2/2');
+  await mainFirst.getByRole('button', { name: 'Reinicio Conquista', exact: true }).click();
+  await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+  // A reset during the two-second pause cancels the pending removal.
+  await first.getByRole('checkbox').click();
+  await page.evaluate(() => (window as Window & { completionTestAudio: HTMLAudioElement }).completionTestAudio.dispatchEvent(new Event('ended')));
+  await page.clock.runFor(1000);
+  await mainFirst.getByRole('button', { name: 'Reinicio Conquista', exact: true }).click();
+  await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+  await page.clock.runFor(5000);
+  await expect(first.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+});
+
 test('native Document PiP opens and closes from the daily button', async ({ page }) => {
   await page.goto('/');
   const supported = await page.evaluate(() => 'documentPictureInPicture' in window);
@@ -64,7 +128,7 @@ test('floating daily stays synchronized across navigation, characters and appear
   await floating.locator('.widget-appearance summary').click();
   await floating.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('game');
   await expect(floating.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
-  await expect(floating.getByRole('heading', { name: 'Duty Missions', exact: true })).toHaveCSS('color', 'rgb(222, 216, 186)');
+  await expect(floating.getByRole('heading', { level: 3 }).first()).toHaveCSS('color', 'rgb(244, 204, 98)');
   await expect(floating.getByRole('progressbar', { name: 'Daily', exact: true })).toHaveAttribute('aria-valuenow', '1');
   await floating.locator('.widget-appearance summary').click();
   await expect(page.locator('.daily-hud-progress')).toHaveCount(0);
@@ -82,7 +146,7 @@ test('floating daily stays synchronized across navigation, characters and appear
   const reopened = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Floating daily', exact: true }).click();
   const restored = await reopened;
-  await expect(restored.getByRole('heading', { name: 'Duty Missions' })).toBeVisible();
+  await expect(restored.getByRole('heading', { name: 'Duty Missions' })).toHaveCount(0);
   await expect(restored.locator('.daily-overlay')).toHaveAttribute('data-widget-theme', 'game');
   await restored.locator('.widget-appearance summary').click();
   await restored.getByRole('combobox', { name: 'Theme', exact: true }).selectOption('companion');

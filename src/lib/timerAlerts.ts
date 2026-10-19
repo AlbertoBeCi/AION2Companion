@@ -10,8 +10,7 @@ export type TimerAlertSound = keyof typeof timerAlertSounds | 'custom';
 export function validAlertLeadMinutes(value: number): boolean {
   return Number.isInteger(value) && value >= 1 && value <= 60;
 }
-
-let completionAudio: HTMLAudioElement | null = null;
+export { playCelebrationSound } from './celebrationSound';
 let timerAlertAudio: HTMLAudioElement | null = null;
 
 function alertAudio(source: string): HTMLAudioElement {
@@ -44,11 +43,4 @@ export async function playTimerAlert(source = timerAlertSounds.default): Promise
   } catch {
     return false;
   }
-}
-
-export function playCelebrationSound(): void {
-  if (typeof window === 'undefined') return;
-  completionAudio ??= new Audio('/sounds/counter-complete.mp3');
-  completionAudio.currentTime = 0;
-  void completionAudio.play().catch(() => undefined);
 }

@@ -30,6 +30,7 @@ import { useDailyOverlay } from './components/useDailyOverlay';
 import { isDesktopWidget, useActiveCharacter } from './lib/desktop';
 import { WidgetAppearanceControls } from './components/WidgetAppearanceControls';
 import { useWidgetTheme } from './lib/widgetAppearance';
+import { FloatingDailyRow } from './components/FloatingDailyRow';
 
 const id = () => crypto.randomUUID();
 const initialCharacter = { name: '', server: '', region: 'global' as Region, className: '' };
@@ -405,18 +406,24 @@ function ChecklistPanel({ title, records, active, progress, onProgress, onReorde
   return <section className="checklist-panel">
     {headerAction}
     <div className="checklist-panel-head"><div><h2>{title}</h2><span className="panel-count">{completed}/{records.length}</span><span className="panel-reset"><RotateCcw size={12} aria-hidden="true" />{resetText}</span></div><div className="panel-tools"><NeoSelect className="panel-category-select" ariaLabel={t('filterCategory')} value={category} onChange={(value) => setCategory(String(value))} options={[{ value: 'all', label: t('all') }, ...[...new Set(records.map((tracker) => tracker.category))].map((item) => ({ value: item, label: trackerCopy(records.find((tracker) => tracker.category === item)!, i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es').category }))]} /><button type="button" className="reorder-toggle" aria-pressed={reorderEnabled} aria-label={t(reorderEnabled ? 'disableReordering' : 'enableReordering')} title={t(reorderEnabled ? 'disableReordering' : 'enableReordering')} onClick={() => { setReorderEnabled((enabled) => !enabled); setDraggingId(null); }}><GripVertical size={17} strokeWidth={3} aria-hidden="true" /></button><button type="button" aria-label={t(label === 'daily' ? 'resetAllDaily' : 'resetAllWeekly')} onClick={() => records.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value) onProgress(tracker, -value); })}><RotateCcw size={13} aria-hidden="true" />{t('reset')}</button><button type="button" className="complete-all" aria-label={t(label === 'daily' ? 'completeVisibleDaily' : 'completeVisibleWeekly')} onClick={() => filtered.forEach((tracker) => { const value = currentValue(tracker, active, progress); if (value < tracker.limit) onProgress(tracker, tracker.limit - value); })}><Check size={13} aria-hidden="true" />{t('complete')}</button></div></div>
-    <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} value={currentValue(tracker, active, progress)} reorderEnabled={reorderEnabled} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (reorderEnabled && draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
+    <div className="companion-list">{filtered.length ? filtered.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} completionKey={trackerCompletionKey(tracker, active)} value={currentValue(tracker, active, progress)} reorderEnabled={reorderEnabled} dragging={draggingId === tracker.id} onDragStart={() => setDraggingId(tracker.id)} onDragEnd={() => setDraggingId(null)} onDrop={() => { if (reorderEnabled && draggingId) move(draggingId, tracker.id); setDraggingId(null); }} onMove={(delta) => moveBy(tracker.id, delta)} onProgress={onProgress} onEdit={() => onEdit(tracker)} onDelete={() => onDelete(tracker)} />) : <div className="companion-empty">{emptyText} <button type="button" onClick={onAdd}>{t('addTracker')}</button></div>}</div>
     <span className="visually-hidden" aria-live="polite" aria-atomic="true">{reorderAnnouncement}</span>
     <button type="button" className="add-list-item" onClick={onAdd}><Plus size={14} />{t(label === 'daily' ? 'addDaily' : 'addWeekly')}</button>
   </section>;
 }
 
-function TrackerRow({ tracker, value, hud = false, reorderEnabled = false, dragging = false, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; hud?: boolean; reorderEnabled?: boolean; dragging?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onDrop?: () => void; onMove?: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void; onDelete?: () => void }) {
+function TrackerRow({ tracker, value, hud = false, completionKey, celebrateOnComplete = false, reorderEnabled = false, dragging = false, onDragStart, onDragEnd, onDrop, onMove, onProgress, onEdit, onDelete }: { tracker: Tracker; value: number; hud?: boolean; completionKey?: string; celebrateOnComplete?: boolean; reorderEnabled?: boolean; dragging?: boolean; onDragStart?: () => void; onDragEnd?: () => void; onDrop?: () => void; onMove?: (delta: number) => void; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void; onDelete?: () => void }) {
   const t = useLocale();
   const language = i18n.resolvedLanguage?.startsWith('en') ? 'en' : 'es';
   const copy = trackerCopy(tracker, language);
   const [celebration, setCelebration] = useState(false);
   const complete = value >= tracker.limit;
+  const wasComplete = useRef(complete);
+  useEffect(() => {
+    if (celebrateOnComplete && complete && !wasComplete.current) setCelebration(true);
+    if (celebrateOnComplete && !complete) setCelebration(false);
+    wasComplete.current = complete;
+  }, [complete, celebrateOnComplete]);
   const name = tracker.id === CONQUEST_TRACKER_ID ? t('conquest') : copy.name;
   useEffect(() => {
     if (!celebration) return;
@@ -425,9 +432,9 @@ function TrackerRow({ tracker, value, hud = false, reorderEnabled = false, dragg
   }, [celebration]);
   async function change(delta: number) {
     const completes = delta > 0 && value < tracker.limit && value + delta >= tracker.limit;
-    if (completes) playCelebrationSound();
+    if (completes) void playCelebrationSound(completionKey);
     await onProgress(tracker, delta);
-    if (completes) setCelebration(true);
+    if (completes && !celebrateOnComplete) setCelebration(true);
   }
   return <article className={`companion-row${reorderEnabled ? ' reorder-enabled' : ''}${complete ? ' is-complete' : ''}${celebration ? ' celebrating' : ''}${dragging ? ' is-dragging' : ''}`} draggable={reorderEnabled} onDragStart={(event) => { if (!reorderEnabled) { event.preventDefault(); return; } event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', tracker.id); onDragStart?.(); }} onDragOver={(event) => { if (reorderEnabled) event.preventDefault(); }} onDrop={(event) => { if (!reorderEnabled) return; event.preventDefault(); onDrop?.(); }} onDragEnd={onDragEnd}>
     {hud && <div className="row-hud-progress" aria-hidden="true"><span style={{ width: `${progressPercent(value, tracker.limit)}%` }} /></div>}
@@ -466,7 +473,11 @@ function DailyOverlayContent({ trackers, characters, active, progress, order = [
     {widgetTheme === 'game' && <div className="daily-hud-progress" role="progressbar" aria-label={t('dailySection')} aria-valuemin={0} aria-valuemax={daily.length || 1} aria-valuenow={completed}><span style={{ width: `${progressPercent(completed, daily.length || 1)}%` }} /><b aria-hidden="true">{progressPercent(completed, daily.length || 1)}%</b></div>}
     <label className="daily-overlay-character"><span className="sr-only">{t('selectCharacter')}</span><select value={active?.id ?? ''} onChange={(event) => onSelectCharacter(event.target.value)}>{characters.length ? characters.map((character) => <option key={character.id} value={character.id}>{character.name}{character.server ? ` · ${character.server}` : ''}</option>) : <option value="">{t('localProfile')}</option>}</select></label>
     <p className="daily-overlay-reset"><RotateCcw size={13} aria-hidden="true" />{shortCountdown(reset)} · {t('dailyResetCountdown')}</p>
-    <div className="companion-list">{daily.map((tracker) => <TrackerRow key={tracker.id} tracker={tracker} hud={widgetTheme === 'game'} value={currentValue(tracker, active, progress)} onProgress={onProgress} />)}</div>
+    <div className="companion-list floating-daily-list">{daily.map((tracker) => {
+      const value = currentValue(tracker, active, progress);
+      const completionKey = trackerCompletionKey(tracker, active);
+      return <FloatingDailyRow key={completionKey} completionKey={completionKey} gap={widgetTheme === 'game' ? 5 : 6} complete={value >= tracker.limit}><TrackerRow tracker={tracker} hud={widgetTheme === 'game'} completionKey={completionKey} celebrateOnComplete value={value} onProgress={onProgress} /></FloatingDailyRow>;
+    })}</div>
     {!daily.length && <p className="companion-empty">{t('noTrackersDesc')}</p>}
     {isDesktopWidget && <button type="button" className="daily-overlay-resize" aria-label={t('resizeDailyWidget')} title={t('resizeDailyWidget')}
       onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture(event.pointerId); resizeOrigin.current = { x: event.screenX, y: event.screenY, width: window.outerWidth, height: window.outerHeight }; }}
@@ -485,6 +496,10 @@ function currentValue(tracker: Tracker, active: Character | null, entries: Progr
   if (!key) return 0;
   const period = periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone);
   return entries.find((entry) => entry.trackerId === tracker.id && entry.ownerKey === key && entry.periodKey === period)?.value ?? 0;
+}
+
+function trackerCompletionKey(tracker: Tracker, active: Character | null): string {
+  return JSON.stringify([ownerKey(active?.id ?? null), tracker.id, periodKey(tracker.frequency, tracker.resetTime, tracker.resetWeekday, new Date(), tracker.resetTimeZone)]);
 }
 
 function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: Tracker; value: number; active: Character | null; onProgress: (tracker: Tracker, delta: number) => void; onEdit?: () => void }) {
@@ -507,7 +522,7 @@ function TrackerCard({ tracker, value, active, onProgress, onEdit }: { tracker: 
   async function recordProgress(delta: number) {
     const completesTracker = delta > 0 && value < tracker.limit && value + delta >= tracker.limit;
     const saved = onProgress(tracker, delta);
-    if (completesTracker) playCelebrationSound();
+    if (completesTracker) void playCelebrationSound(trackerCompletionKey(tracker, active));
     await saved;
     if (completesTracker) setCelebration((current) => current + 1);
   }
