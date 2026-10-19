@@ -67,7 +67,7 @@ La ventana principal también usa una cabecera propia con el estilo de la app: a
 
 La versión de escritorio muestra las diarias **sin barra del navegador ni marco de Windows**, en una ventana siempre visible. Se abre desde **Resumen → Diarias flotantes**. Arrastra su cabecera para moverla y la esquina inferior derecha para cambiar el tamaño. El botón junto a cerrar recupera la app principal; puedes minimizarla y seguir usando el widget. El fondo es transparente y no se muestra barra de desplazamiento; la rueda del ratón permite recorrer las listas largas. En el botón de apariencia de la cabecera puedes ajustar la opacidad entre 25% y 100%. Se recuerdan la opacidad, la posición, el tamaño y el personaje seleccionado.
 
-El ejecutable portátil se genera en `release/AION2-Companion-0.1.0-Windows.exe` y no necesita instalarse ni arrancar un servidor local. Los datos se guardan en `%APPDATA%/AION2Companion`, compartidos entre la app de escritorio y el widget. El navegador guarda sus datos por separado: usa **Ajustes → Exportar copia** en la web y **Ajustes → Importar copia** en escritorio para trasladarlos. El progreso posterior se sincroniza entre las dos ventanas de escritorio.
+El ejecutable portátil se genera en `release/AION2-Companion-<versión>-Windows.exe` y no necesita instalarse ni arrancar un servidor local. Los datos se guardan en `%APPDATA%/AION2Companion`, compartidos entre la app de escritorio y el widget. El navegador guarda sus datos por separado: usa **Ajustes → Exportar copia** en la web y **Ajustes → Importar copia** en escritorio para trasladarlos. El progreso posterior se sincroniza entre las dos ventanas de escritorio.
 
 ```sh
 npm install
