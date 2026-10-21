@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence, nextWeeklyGlobalReset } from './schedule';
+import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence, nextWeeklyGlobalReset, previousScheduleOccurrence } from './schedule';
 
 describe('Global community schedules', () => {
+  it('finds the preceding hourly and fixed events for elapsed timer bars', () => {
+    const now = new Date('2026-10-16T10:35:00Z');
+    expect(previousScheduleOccurrence(globalSchedules.find(s => s.id === 'shugo-festival')!, now, 'Europe/Berlin')?.toISOString()).toBe('2026-10-16T10:00:00.000Z');
+    expect(previousScheduleOccurrence(globalSchedules.find(s => s.id === 'spacetime-rift')!, now, 'Europe/Berlin')?.toISOString()).toBe('2026-10-16T09:00:00.000Z');
+    expect(previousScheduleOccurrence(globalSchedules.find(s => s.id === 'artifact-siege')!, now, 'Europe/Berlin')?.toISOString()).toBe('2026-10-15T19:00:00.000Z');
+  });
+
+  it('skips a nonexistent preceding wall time during the spring DST change', () => {
+    expect(previousScheduleOccurrence(globalSchedules.find(s => s.id === 'spacetime-rift')!, new Date('2027-03-28T01:30:00Z'), 'Europe/Berlin')?.toISOString()).toBe('2027-03-27T22:00:00.000Z');
+  });
   it('finds the next rift using the selected server time zone', () => {
     const rift = globalSchedules.find((schedule) => schedule.id === 'spacetime-rift')!;
     const now = new Date('2026-10-16T12:00:00.000Z');

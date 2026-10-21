@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export const isDesktopWidget = Boolean(window.aionDesktop?.isWidget);
+export const isAlarmWidget = window.aionDesktop?.widgetKind === 'alarms';
 const activeCharacterKey = 'aion2-desktop-active-character';
 
 function savedCharacter() {

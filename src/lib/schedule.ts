@@ -45,12 +45,12 @@ function weekday(year: number, month: number, day: number): number {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-function nextFixedTime(days: number[], times: string[], now: Date, timeZone: string): Date | null {
+function nextFixedTime(days: number[], times: string[], now: Date, timeZone: string, direction = 1): Date | null {
   const current = partsAt(now, timeZone);
   const start = Date.UTC(current.year, current.month - 1, current.day);
   const candidates: Date[] = [];
   for (let offset = 0; offset <= 7; offset += 1) {
-    const dayDate = new Date(start + offset * 86400000);
+    const dayDate = new Date(start + direction * offset * 86400000);
     const year = dayDate.getUTCFullYear();
     const month = dayDate.getUTCMonth() + 1;
     const day = dayDate.getUTCDate();
@@ -58,10 +58,22 @@ function nextFixedTime(days: number[], times: string[], now: Date, timeZone: str
     for (const time of times) {
       const [hour, minute] = time.split(':').map(Number);
       const candidate = localDateTimeToInstant({ year, month, day, hour: hour ?? 0, minute: minute ?? 0, second: 0 }, timeZone);
-      if (candidate && candidate.getTime() > now.getTime()) candidates.push(candidate);
+      if (candidate && (direction === 1 ? candidate.getTime() > now.getTime() : candidate.getTime() <= now.getTime())) candidates.push(candidate);
     }
   }
-  return candidates.sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+  return candidates.sort((a, b) => direction * (a.getTime() - b.getTime()))[0] ?? null;
+}
+
+export function previousScheduleOccurrence(schedule: RecurringSchedule, now: Date, timeZone: string): Date | null {
+  if (schedule.intervalMinute !== undefined) {
+    const currentMinute = Math.floor(now.getTime() / 60000) * 60000;
+    for (let elapsed = 0; elapsed < 60; elapsed += 1) {
+      const candidate = new Date(currentMinute - elapsed * 60000);
+      if (partsAt(candidate, timeZone).minute === schedule.intervalMinute) return candidate;
+    }
+    return null;
+  }
+  return nextFixedTime(schedule.days ?? [], schedule.times ?? [], now, timeZone, -1);
 }
 
 export function nextScheduleOccurrence(schedule: RecurringSchedule, now: Date, timeZone: string): Date | null {

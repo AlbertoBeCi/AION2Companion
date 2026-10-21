@@ -4,6 +4,9 @@
 .desktop-app-root::-webkit-scrollbar, .desktop-app-root ::-webkit-scrollbar { display: none; }
 .desktop-main-frame { --desktop-titlebar-height: 44px; display: grid; grid-template-rows: var(--desktop-titlebar-height) minmax(0, 1fr); width: 100%; height: 100%; overflow: hidden; border: var(--border); background: var(--surface); }
 .desktop-main-frame[data-maximized="true"] { border: 0; }
+.desktop-main-frame[data-native-controls="true"] { border: 0; }
+.desktop-main-frame[data-native-controls="true"] .desktop-titlebar-name { max-width: calc(env(titlebar-area-width, calc(100vw - 138px)) - 28px); }
+@media (max-width: 560px) { .desktop-main-frame[data-native-controls="true"] .desktop-titlebar-page { display: none; } }
 .desktop-titlebar { z-index: 110; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 8px 0 14px; border-bottom: var(--border); background: var(--surface); color: var(--ink); -webkit-app-region: drag; app-region: drag; user-select: none; }
 .desktop-titlebar-name { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .desktop-titlebar-name img { flex: none; }

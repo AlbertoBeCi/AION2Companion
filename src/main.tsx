@@ -14,7 +14,7 @@ import './styles/timer-settings.css';
 import './styles/daily-overlay.css';
 import { ensurePreferences } from './db/database';
 import { TimerProvider } from './components/TimerProvider';
-import { isDesktopWidget } from './lib/desktop';
+import { isDesktopWidget, isAlarmWidget } from './lib/desktop';
 import { DesktopFrame } from './components/DesktopFrame';
 import './styles/desktop-frame.css';
 
@@ -26,7 +26,7 @@ if (isDesktopWidget) {
 }
 else if (window.aionDesktop) document.documentElement.classList.add('desktop-app-root');
 
-const appContent = isDesktopWidget ? <App /> : <TimerProvider><App /></TimerProvider>;
+const appContent = isDesktopWidget && !isAlarmWidget ? <App /> : <TimerProvider playAlerts={!isAlarmWidget}><App /></TimerProvider>;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

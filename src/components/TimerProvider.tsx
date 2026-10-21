@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence } from '../lib/schedule';
+import { currentScheduleOccurrence, globalSchedules, nextScheduleOccurrence, previousScheduleOccurrence } from '../lib/schedule';
 import { fetchGartuaFeed, isSupportedGartuaServer, type GartuaFeed } from '../lib/gartuaFeed';
 import { isWithinTimerAlertWindow, playTimerAlert, preloadTimerAlertAudio, TIMER_ALERT_LEAD_KEY, TIMER_ALERT_SOUND_KEY, timerAlertSounds, validAlertLeadMinutes, type TimerAlertSound } from '../lib/timerAlerts';
 import { LOCAL_SETTINGS_CHANGED } from '../lib/localSettings';
@@ -60,7 +60,7 @@ export function timerCountdown(target: Date, now: Date): string {
   return `${days ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function useTimerEngine() {
+function useTimerEngine(playAlerts: boolean) {
   const page = useUiStore(state => state.page);
   const [now, setNow] = useState(() => new Date());
   const [timeZone, setTimeZone] = useState(readZone);
@@ -134,7 +134,7 @@ function useTimerEngine() {
 
   const scheduleMinute = Math.floor(now.getTime() / 60000);
   const scheduleNow = useMemo(() => new Date(scheduleMinute * 60000), [scheduleMinute]);
-  const entries = useMemo(() => globalSchedules.map(schedule => ({ schedule, next: nextScheduleOccurrence(schedule, scheduleNow, timeZone) })).sort((a, b) => (a.next?.getTime() ?? Infinity) - (b.next?.getTime() ?? Infinity)), [scheduleNow, timeZone]);
+  const entries = useMemo(() => globalSchedules.map(schedule => ({ schedule, next: nextScheduleOccurrence(schedule, scheduleNow, timeZone), previous: previousScheduleOccurrence(schedule, scheduleNow, timeZone) })).sort((a, b) => (a.next?.getTime() ?? Infinity) - (b.next?.getTime() ?? Infinity)), [scheduleNow, timeZone]);
   const activeEntries = useMemo(() => globalSchedules.flatMap(schedule => {
     const start = currentScheduleOccurrence(schedule, scheduleNow, timeZone);
     return start ? [{ schedule, start, ends: new Date(start.getTime() + (schedule.activeDurationMinute ?? 0) * 60000) }] : [];
@@ -146,6 +146,7 @@ function useTimerEngine() {
   }), [gartuaFeed]);
 
   useEffect(() => {
+    if (!playAlerts) return;
     if (alertSound === 'custom' && customAudio === undefined) return;
     const candidates = [
       ...entries.map(({ schedule, next }) => ({ id: schedule.id, next })),
@@ -163,7 +164,7 @@ function useTimerEngine() {
         if (played) { firedAlerts.current.set(id, occurrence); remember(firedKey, occurrence); }
       }, () => pendingAlerts.current.delete(pendingKey));
     }
-  }, [entries, gartuaTimers, gartuaFeedStatus, now, soundAlerts, alertLeadMinutes, alertSoundSource, alertSound, customAudio]);
+  }, [playAlerts, entries, gartuaTimers, gartuaFeedStatus, now, soundAlerts, alertLeadMinutes, alertSoundSource, alertSound, customAudio]);
 
   function changeZone(value: string) {
     if (!serverZones.some(zone => zone.value === value)) return;
@@ -195,8 +196,8 @@ function useTimerEngine() {
 }
 
 const TimerContext = createContext<ReturnType<typeof useTimerEngine> | null>(null);
-export function TimerProvider({ children }: { children: ReactNode }) {
-  const timers = useTimerEngine();
+export function TimerProvider({ children, playAlerts = true }: { children: ReactNode; playAlerts?: boolean }) {
+  const timers = useTimerEngine(playAlerts);
   return <TimerContext.Provider value={timers}>{children}</TimerContext.Provider>;
 }
 export function useTimers() {

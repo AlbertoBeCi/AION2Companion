@@ -65,7 +65,7 @@ La compilación de producción queda en `dist/`. GitHub Actions también ejecuta
 
 Web y escritorio comparten este repositorio y los mismos componentes. El código de escritorio está en `desktop/` y los ejecutables descargables se publican en [Releases](https://github.com/AlbertoBeCi/AION2Companion/releases), fuera del código fuente.
 
-La ventana principal también usa una cabecera propia con el estilo de la app: arrastrar para mover, minimizar, maximizar/restaurar y cerrar. Puedes redimensionar desde sus bordes o esquinas. Las barras de desplazamiento están ocultas; la rueda del ratón y el teclado siguen permitiendo navegar. Web, PWA y escritorio usan el mismo icono.
+La ventana principal conserva una cabecera con el estilo de la app y usa los botones nativos de Windows para minimizar, maximizar/restaurar y cerrar. Puedes arrastrarla a un borde o una esquina para ocupar media pantalla o un cuarto, y redimensionar desde sus bordes. En Windows 11, coloca el puntero sobre maximizar o pulsa **Win + Z** para elegir una distribución de ventanas. Estas opciones requieren tener activado **Configuración → Sistema → Multitarea → Acoplar ventanas**. El tamaño mínimo es de 360 × 320 para permitir distribuciones pequeñas; el contenido se adapta y se puede desplazar. Las barras de desplazamiento están ocultas; la rueda del ratón y el teclado siguen permitiendo navegar. Web, PWA y escritorio usan el mismo icono.
 
 La versión de escritorio muestra las diarias **sin barra del navegador ni marco de Windows**, en una ventana siempre visible. Se abre desde **Resumen → Diarias flotantes**. Arrastra su cabecera para moverla y la esquina inferior derecha para cambiar el tamaño. El botón junto a cerrar recupera la app principal; puedes minimizarla y seguir usando el widget. El fondo es transparente y no se muestra barra de desplazamiento; la rueda del ratón permite recorrer las listas largas. En el botón de apariencia de la cabecera puedes ajustar la opacidad entre 25% y 100%. Se recuerdan la opacidad, la posición, el tamaño y el personaje seleccionado.
 
@@ -78,7 +78,11 @@ npm run desktop:test   # comprobar las ventanas con un perfil de prueba aislado
 npm run desktop:pack   # generar el ejecutable portátil de Windows x64
 ```
 
-Para superponer el widget al juego, usa modo ventana o ventana sin bordes si la pantalla completa exclusiva lo oculta. Cerrar el widget deja la app principal abierta; cerrar la app principal cierra ambas ventanas. Los feeds siguen necesitando conexión a internet.
+Desde **Resumen → Mis alarmas → Alarmas flotantes** puedes abrir una segunda ventana siempre visible, sincronizada con las alarmas que actives o desactives en Temporizadores. Tiene los temas **Companion** y **AION · Interfaz del juego**, opacidad de 25% a 100%, cabecera para arrastrar y esquina para redimensionar. Cada flotante recuerda su propio tema, opacidad, tamaño y posición. Cerrar las diarias deja las alarmas abiertas y viceversa. La app principal reproduce los avisos una sola vez aunque ambas flotantes estén abiertas o la principal esté minimizada.
+
+Las alarmas flotantes muestran temporizadores, sin marcadores de misión. La barra roja se llena conforme se agota el tiempo: entre el final de un evento y su siguiente comienzo, o durante su duración cuando está activo. Para Gartua, la barra usa el tramo de antelación configurado; si el feed no da una próxima hora válida, se muestra su estado sin inventar un progreso.
+
+Para superponer los widgets al juego, usa modo ventana o ventana sin bordes si la pantalla completa exclusiva los oculta. Cerrar un widget deja los demás abiertos; cerrar la app principal cierra las ventanas flotantes. Los feeds siguen necesitando conexión a internet.
 
 ## 🧰 Stack
 

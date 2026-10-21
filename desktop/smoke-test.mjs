@@ -2,6 +2,7 @@ import { _electron as electron, expect } from '@playwright/test';
 import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkAlarmWidget } from './alarm-checks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'test-results', `desktop-${Date.now()}`);
@@ -19,19 +20,47 @@ try {
   main.on('pageerror', (error) => errors.push(error.message));
   await expect(main.getByRole('button', { name: 'Diarias flotantes', exact: true })).toBeVisible();
   await expect(main.locator('.desktop-titlebar')).toBeVisible();
+  const nativeControls = await main.evaluate(() => window.aionDesktop.nativeWindowControls);
   expect(await main.locator('.desktop-titlebar').evaluate((element) => getComputedStyle(element).getPropertyValue('-webkit-app-region'))).toBe('drag');
-  expect(await main.getByRole('button', { name: 'Cerrar la app', exact: true }).evaluate((element) => getComputedStyle(element).getPropertyValue('-webkit-app-region'))).toBe('no-drag');
+  if (nativeControls) {
+    await expect(main.locator('.desktop-window-controls, .desktop-resize-edge')).toHaveCount(0);
+    expect(await main.evaluate(() => navigator.windowControlsOverlay.visible)).toBe(true);
+    const titleArea = await main.evaluate(() => {
+      const { width, height } = navigator.windowControlsOverlay.getTitlebarAreaRect();
+      return { width, height, viewport: window.innerWidth };
+    });
+    expect(titleArea.height).toBe(44);
+    expect(titleArea.width).toBeLessThan(titleArea.viewport);
+    expect(titleArea.width).toBeGreaterThan(0);
+  } else {
+    expect(await main.getByRole('button', { name: 'Cerrar la app', exact: true }).evaluate((element) => getComputedStyle(element).getPropertyValue('-webkit-app-region'))).toBe('no-drag');
+  }
   expect(await main.locator('html').evaluate((element) => getComputedStyle(element).scrollbarWidth)).toBe('none');
   expect(await main.locator('.desktop-main-content').evaluate((element) => getComputedStyle(element).scrollbarWidth)).toBe('none');
-  await main.getByRole('button', { name: 'Maximizar la app', exact: true }).click();
-  await expect(main.getByRole('button', { name: 'Restaurar tamaño de la app', exact: true })).toBeVisible();
-  await main.getByRole('button', { name: 'Restaurar tamaño de la app', exact: true }).click();
-  await expect(main.getByRole('button', { name: 'Maximizar la app', exact: true })).toBeVisible();
-  const appResize = main.getByRole('button', { name: 'Cambiar tamaño de la app', exact: true });
-  const mainWidth = await main.evaluate(() => window.outerWidth);
-  await appResize.focus();
-  await appResize.press('ArrowLeft');
-  await expect.poll(() => main.evaluate(() => window.outerWidth)).toBe(Math.max(800, mainWidth - 20));
+  await main.evaluate(() => window.aionDesktop.toggleMaximizeMain());
+  await expect(main.locator('.desktop-main-frame')).toHaveAttribute('data-maximized', 'true');
+  await main.evaluate(() => window.aionDesktop.toggleMaximizeMain());
+  await expect(main.locator('.desktop-main-frame')).toHaveAttribute('data-maximized', 'false');
+  const originalBounds = await main.evaluate(() => window.aionDesktop.getMainBounds());
+  // Check the content at half/quarter-screen sizes, including a small scaled display.
+  for (const [width, height] of [[960, 900], [640, 360], [360, 320]]) {
+    await main.evaluate(([width, height]) => window.aionDesktop.resizeMain({ x: 0, y: 0, width, height }), [width, height]);
+    await expect.poll(() => main.evaluate(() => window.aionDesktop.getMainBounds())).toMatchObject({ width, height });
+    await expect(main.locator('.desktop-titlebar')).toBeInViewport();
+    expect(await main.locator('.desktop-main-content').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    if (nativeControls) {
+      expect(await main.locator('.desktop-titlebar-name').evaluate((element) => element.getBoundingClientRect().right <= navigator.windowControlsOverlay.getTitlebarAreaRect().width)).toBe(true);
+    }
+    await main.screenshot({ path: path.join(output, `desktop-${width}x${height}.png`) });
+  }
+  await main.evaluate((bounds) => window.aionDesktop.resizeMain(bounds), originalBounds);
+  await expect.poll(() => main.evaluate(() => window.aionDesktop.getMainBounds())).toEqual(originalBounds);
+  if (!nativeControls) {
+    const appResize = main.getByRole('button', { name: 'Cambiar tamaño de la app', exact: true });
+    await appResize.focus();
+    await appResize.press('ArrowLeft');
+    await expect.poll(() => main.evaluate(() => window.outerWidth)).toBe(Math.max(360, originalBounds.width - 20));
+  }
   await main.getByRole('button', { name: 'Ajustes', exact: true }).first().click();
   const scrolling = main.locator('.desktop-main-content');
   await scrolling.evaluate((element) => element.scrollBy(0, 500));
@@ -114,7 +143,7 @@ try {
 
   // Minimize the full app and keep using the independent always-on-top widget.
   await widget.screenshot({ path: path.join(output, 'daily-game-progress.png'), omitBackground: true });
-  await main.getByRole('button', { name: 'Minimizar la app', exact: true }).click();
+  await main.evaluate(() => window.aionDesktop.minimizeMain());
   await duty(widget).getByRole('button', { name: 'Reinicio Misiones de Duty' }).click();
   await expect(duty(widget).locator('.row-progress>b')).toHaveText('0/5');
   await widget.getByRole('button', { name: 'Mostrar la app principal' }).click();
@@ -159,9 +188,10 @@ try {
   expect(await restored.locator('.companion-row').first().evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await restored.getByRole('button', { name: 'Restaurar al 100%' }).click();
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((win) => win.webContents.getURL().includes('widget=daily')).getOpacity())).toBeCloseTo(1, 1);
+  await checkAlarmWidget({ app, main, daily: restored, output, errors });
   expect(errors).toEqual([]);
   const applicationClosed = app.waitForEvent('close');
-  await main.getByRole('button', { name: 'Cerrar la app', exact: true }).click();
+  await main.evaluate(() => { void window.aionDesktop.closeMain(); });
   await applicationClosed;
   console.log(`Desktop checks passed. Preview: ${path.join(output, 'daily-widget.png')}`);
 } finally {

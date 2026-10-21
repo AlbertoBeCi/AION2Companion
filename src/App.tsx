@@ -27,7 +27,8 @@ import { creatorSupportUrl } from './lib/siteConfig';
 import { formatLocalClock } from './lib/timeDisplay';
 import { trackerCopy } from './lib/trackerCopy';
 import { useDailyOverlay } from './components/useDailyOverlay';
-import { isDesktopWidget, useActiveCharacter } from './lib/desktop';
+import { isDesktopWidget, isAlarmWidget, useActiveCharacter } from './lib/desktop';
+import { AlarmOverlay } from './components/AlarmOverlay';
 import { WidgetAppearanceControls } from './components/WidgetAppearanceControls';
 import { useWidgetTheme } from './lib/widgetAppearance';
 import { FloatingDailyRow } from './components/FloatingDailyRow';
@@ -44,6 +45,7 @@ function applyTheme(theme: 'dark' | 'light', remember = true) {
   const root = document.documentElement;
   root.dataset.theme = theme;
   root.style.colorScheme = theme;
+  if (window.aionDesktop?.nativeWindowControls) window.aionDesktop.setMainTitleBarTheme(theme);
   if (remember) {
     try { localStorage.setItem(themeStorageKey, theme); } catch { /* Theme remains active for this session. */ }
   }
@@ -109,7 +111,7 @@ function App() {
   }, [preferences.language, preferences.theme]);
 
   useEffect(() => {
-    document.title = `${t(pageTitleKey[page])} · AION2Companion`;
+    document.title = `${t(isAlarmWidget ? 'myTimerAlerts' : isDesktopWidget ? 'dailySection' : pageTitleKey[page])} · AION2Companion`;
   }, [page, preferences.language, t]);
 
   useEffect(() => { void seedGlobalChecklists().then(() => migrateCharacterProgress()); }, []);
@@ -201,6 +203,7 @@ function App() {
     setModal('tracker');
   }
 
+  if (isAlarmWidget) return <AlarmOverlay />;
   if (isDesktopWidget) return <DailyOverlayContent trackers={trackers} characters={characters} active={active} progress={progress} order={preferences.trackerOrder?.daily ?? []} onProgress={changeProgress} onSelectCharacter={setActiveCharacter} onClose={dailyOverlay.close} />;
 
   const pageContent = page === 'dashboard'

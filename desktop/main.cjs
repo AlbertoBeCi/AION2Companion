@@ -6,12 +6,13 @@ const { pathToFileURL } = require('node:url');
 const APP_URL = 'aion2://app/';
 const dist = path.join(__dirname, '..', 'dist');
 const preload = path.join(__dirname, 'preload.cjs');
+const nativeWindowControls = process.platform === 'win32';
+const mainMinSize = { width: 360, height: 320 };
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 let mainWindow;
-let dailyWindow;
-let openingDaily;
-let saveBoundsTimer;
-let savingBounds = Promise.resolve();
+const widgets = Object.fromEntries(['daily', 'alarms'].map((kind) => [kind, {
+  kind, window: undefined, opening: undefined, saveTimer: undefined, saving: Promise.resolve(),
+}]));
 
 app.setName('AION2 Companion');
 app.setPath('userData', process.env.AION2_DESKTOP_TEST_DATA
@@ -39,9 +40,9 @@ function secureWindow(win) {
   win.webContents.on('will-attach-webview', (event) => event.preventDefault());
 }
 
-function webPreferences(widget = false) {
+function webPreferences(widget) {
   return { preload, sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false,
-    additionalArguments: widget ? ['--aion-daily-widget'] : [] };
+    additionalArguments: widget ? [`--aion-${widget}-widget`] : [] };
 }
 
 function showMain() {
@@ -51,65 +52,67 @@ function showMain() {
   mainWindow.focus();
 }
 
-function notifyDaily() {
-  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('daily:changed', Boolean(dailyWindow && !dailyWindow.isDestroyed()));
+function notifyWidget(state) {
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send(`${state.kind}:changed`, Boolean(state.window && !state.window.isDestroyed()));
 }
 
-function saveDailyBounds() {
-  if (!dailyWindow || dailyWindow.isDestroyed()) return savingBounds;
-  const bounds = dailyWindow.getBounds();
-  savingBounds = savingBounds.catch(() => {}).then(async () => {
+function saveWidgetBounds(state) {
+  if (!state.window || state.window.isDestroyed()) return state.saving;
+  const bounds = state.window.getBounds();
+  state.saving = state.saving.catch(() => {}).then(async () => {
     await fs.mkdir(app.getPath('userData'), { recursive: true });
-    await fs.writeFile(path.join(app.getPath('userData'), 'daily-window.json'), JSON.stringify(bounds));
+    await fs.writeFile(path.join(app.getPath('userData'), `${state.kind}-window.json`), JSON.stringify(bounds));
   });
-  return savingBounds;
+  return state.saving;
 }
 
-async function dailyBounds() {
-  await savingBounds.catch(() => {});
+async function widgetBounds(state) {
+  await state.saving.catch(() => {});
   let saved;
-  try { saved = JSON.parse(await fs.readFile(path.join(app.getPath('userData'), 'daily-window.json'), 'utf8')); } catch { /* First launch. */ }
+  try { saved = JSON.parse(await fs.readFile(path.join(app.getPath('userData'), `${state.kind}-window.json`), 'utf8')); } catch { /* First launch. */ }
   const valid = saved && ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(saved[key]));
   const area = (valid ? screen.getDisplayMatching(saved) : screen.getPrimaryDisplay()).workArea;
   const width = Math.min(area.width, Math.max(300, valid ? saved.width : 440));
-  const height = Math.min(area.height, Math.max(260, valid ? saved.height : 600));
+  const height = Math.min(area.height, Math.max(260, valid ? saved.height : state.kind === 'daily' ? 600 : 480));
   return { width, height,
     x: Math.max(area.x, Math.min(valid ? saved.x : area.x + area.width - width - 24, area.x + area.width - width)),
-    y: Math.max(area.y, Math.min(valid ? saved.y : area.y + 40, area.y + area.height - height)) };
+    y: Math.max(area.y, Math.min(valid ? saved.y : area.y + (state.kind === 'daily' ? 40 : 100), area.y + area.height - height)) };
 }
 
-async function openDaily() {
-  if (openingDaily) return openingDaily;
-  if (dailyWindow && !dailyWindow.isDestroyed()) { dailyWindow.show(); dailyWindow.setAlwaysOnTop(true, 'screen-saver'); dailyWindow.focus(); return; }
-  openingDaily = (async () => {
-    const bounds = await dailyBounds();
+async function openWidget(state) {
+  if (state.opening) return state.opening;
+  if (state.window && !state.window.isDestroyed()) { state.window.show(); state.window.setAlwaysOnTop(true, 'screen-saver'); state.window.focus(); return; }
+  state.opening = (async () => {
+    const bounds = await widgetBounds(state);
+    if (!mainWindow || mainWindow.isDestroyed()) return;
     const win = new BrowserWindow({ ...bounds, minWidth: 300, minHeight: 260, frame: false,
       alwaysOnTop: true, hasShadow: false, thickFrame: false, transparent: true, backgroundColor: '#00000000', show: false,
       resizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true,
-      title: 'Diarias · AION2Companion', icon: path.join(__dirname, 'icon.png'), webPreferences: webPreferences(true) });
-    dailyWindow = win;
+      title: `${state.kind === 'daily' ? 'Diarias' : 'Mis alarmas'} · AION2Companion`, icon: path.join(__dirname, 'icon.png'), webPreferences: webPreferences(state.kind) });
+    state.window = win;
     secureWindow(win);
     const scheduleSave = () => {
-      clearTimeout(saveBoundsTimer);
-      saveBoundsTimer = setTimeout(() => { void saveDailyBounds().catch(() => {}); }, 300);
+      clearTimeout(state.saveTimer);
+      state.saveTimer = setTimeout(() => { void saveWidgetBounds(state).catch(() => {}); }, 300);
     };
     win.on('move', scheduleSave);
     win.on('resize', scheduleSave);
-    win.on('close', () => { clearTimeout(saveBoundsTimer); void saveDailyBounds().catch(() => {}); });
-    win.on('closed', () => { dailyWindow = undefined; notifyDaily(); });
+    win.on('close', () => { clearTimeout(state.saveTimer); void saveWidgetBounds(state).catch(() => {}); });
+    win.on('closed', () => { state.window = undefined; notifyWidget(state); });
     try {
-      await win.loadURL(`${APP_URL}?widget=daily`);
+      await win.loadURL(`${APP_URL}?widget=${state.kind}`);
+      if (win.isDestroyed()) return;
       win.show();
       win.setAlwaysOnTop(true, 'screen-saver');
-      notifyDaily();
-    } catch (error) { win.destroy(); throw error; }
+      notifyWidget(state);
+    } catch (error) { if (!win.isDestroyed()) win.destroy(); throw error; }
   })();
-  try { await openingDaily; } finally { openingDaily = undefined; }
+  try { await state.opening; } finally { state.opening = undefined; }
 }
 
 function trustedSender(event) {
   const sender = event.sender;
-  return (sender === mainWindow?.webContents || sender === dailyWindow?.webContents)
+  return (sender === mainWindow?.webContents || Object.values(widgets).some(state => sender === state.window?.webContents))
     && event.senderFrame === sender.mainFrame && isAppURL(event.senderFrame.url);
 }
 
@@ -154,14 +157,19 @@ async function serveApp(request) {
 
 async function createMain() {
   const area = screen.getPrimaryDisplay().workArea;
-  mainWindow = new BrowserWindow({ width: Math.min(1400, area.width), height: Math.min(900, area.height), minWidth: 800, minHeight: 600,
-    frame: false, thickFrame: false, hasShadow: false, fullscreenable: false,
+  mainWindow = new BrowserWindow({ width: Math.min(1400, area.width), height: Math.min(900, area.height), minWidth: mainMinSize.width, minHeight: mainMinSize.height,
+    // Keep the native resize frame and caption buttons so Windows owns Snap and its layout menu.
+    ...(nativeWindowControls ? {
+      titleBarStyle: 'hidden', titleBarOverlay: { color: '#1e1e1e', symbolColor: '#f6eedc', height: 44 },
+      thickFrame: true, hasShadow: true,
+    } : { frame: false, thickFrame: false, hasShadow: false }),
+    resizable: true, maximizable: true, fullscreenable: false,
     show: false, backgroundColor: '#1e1e1e', title: 'AION2Companion', icon: path.join(__dirname, 'icon.png'), webPreferences: webPreferences() });
   secureWindow(mainWindow);
   const notifyMaximized = () => mainWindow?.webContents.send('main:maximized', mainWindow.isMaximized());
   mainWindow.on('maximize', notifyMaximized);
   mainWindow.on('unmaximize', notifyMaximized);
-  mainWindow.on('closed', () => { mainWindow = undefined; dailyWindow?.close(); });
+  mainWindow.on('closed', () => { mainWindow = undefined; for (const state of Object.values(widgets)) state.window?.close(); });
   await mainWindow.loadURL(APP_URL);
   mainWindow.show();
 }
@@ -174,9 +182,26 @@ else {
     const { session } = require('electron');
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
-    handle('daily:open', openDaily);
-    handle('daily:close', () => dailyWindow?.close());
-    handle('daily:status', () => Boolean(dailyWindow && !dailyWindow.isDestroyed()));
+    for (const state of Object.values(widgets)) {
+      handle(`${state.kind}:open`, () => openWidget(state));
+      handle(`${state.kind}:close`, () => state.window?.close());
+      handle(`${state.kind}:status`, () => Boolean(state.window && !state.window.isDestroyed()));
+      ipcMain.on(`${state.kind}:opacity`, (event, value) => {
+        const win = state.window;
+        if (!win || !trustedSender(event) || event.sender !== win.webContents || !Number.isFinite(value)) return;
+        win.setOpacity(Math.max(0.25, Math.min(1, value)));
+      });
+      ipcMain.on(`${state.kind}:resize`, (event, width, height) => {
+        const win = state.window;
+        if (!win || !trustedSender(event) || event.sender !== win.webContents || !Number.isFinite(width) || !Number.isFinite(height)) return;
+        const area = screen.getDisplayMatching(win.getBounds()).workArea;
+        // Windows locks min/max bounds while a transparent window is non-resizable.
+        win.setResizable(true);
+        win.setSize(Math.round(Math.max(300, Math.min(width, area.width))), Math.round(Math.max(260, Math.min(height, area.height))));
+        win.setResizable(false);
+        win.setAlwaysOnTop(true, 'screen-saver');
+      });
+    }
     handle('main:show', showMain);
     handleMain('main:minimize', () => mainWindow.minimize());
     handleMain('main:toggle-maximize', () => {
@@ -186,30 +211,22 @@ else {
     handleMain('main:is-maximized', () => mainWindow.isMaximized());
     handleMain('main:bounds', () => mainWindow.getBounds());
     handleMain('main:close', () => mainWindow.close());
+    ipcMain.on('main:titlebar-theme', (event, theme) => {
+      if (!nativeWindowControls || !trustedSender(event) || event.sender !== mainWindow?.webContents) return;
+      if (theme !== 'dark' && theme !== 'light') return;
+      mainWindow.setTitleBarOverlay(theme === 'dark'
+        ? { color: '#1e1e1e', symbolColor: '#f6eedc' }
+        : { color: '#ffffff', symbolColor: '#111111' });
+    });
     ipcMain.on('main:resize', (event, bounds) => {
       if (!trustedSender(event) || event.sender !== mainWindow?.webContents || mainWindow.isMaximized()) return;
       if (!bounds || !['x', 'y', 'width', 'height'].every((key) => Number.isFinite(bounds[key]))) return;
       const area = screen.getDisplayMatching(mainWindow.getBounds()).workArea;
-      const width = Math.round(Math.max(800, Math.min(bounds.width, area.width)));
-      const height = Math.round(Math.max(600, Math.min(bounds.height, area.height)));
+      const width = Math.round(Math.max(mainMinSize.width, Math.min(bounds.width, area.width)));
+      const height = Math.round(Math.max(mainMinSize.height, Math.min(bounds.height, area.height)));
       mainWindow.setBounds({ width, height,
         x: Math.round(Math.max(area.x, Math.min(bounds.x, area.x + area.width - width))),
         y: Math.round(Math.max(area.y, Math.min(bounds.y, area.y + area.height - height))) });
-    });
-    ipcMain.on('daily:opacity', (event, value) => {
-      if (!trustedSender(event) || event.sender !== dailyWindow?.webContents || !Number.isFinite(value)) return;
-      dailyWindow.setOpacity(Math.max(0.25, Math.min(1, value)));
-    });
-    ipcMain.on('daily:resize', (event, width, height) => {
-      if (!trustedSender(event) || event.sender !== dailyWindow?.webContents || !Number.isFinite(width) || !Number.isFinite(height)) return;
-      const bounds = dailyWindow.getBounds();
-      const area = screen.getDisplayMatching(bounds).workArea;
-      // Windows locks min/max bounds while a transparent window is non-resizable.
-      // Enable resizing only for this explicit corner-handle request.
-      dailyWindow.setResizable(true);
-      dailyWindow.setSize(Math.round(Math.max(300, Math.min(width, area.width))), Math.round(Math.max(260, Math.min(height, area.height))));
-      dailyWindow.setResizable(false);
-      dailyWindow.setAlwaysOnTop(true, 'screen-saver');
     });
     await createMain();
   }).catch((error) => {

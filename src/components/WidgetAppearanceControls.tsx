@@ -5,20 +5,22 @@ import type { WidgetTheme } from '../lib/widgetAppearance';
 
 const opacityKey = 'aion2-desktop-widget-opacity';
 
-function savedOpacity() {
+function savedOpacity(key: string) {
   try {
-    const value = Number(localStorage.getItem(opacityKey));
+    const value = Number(localStorage.getItem(key));
     return Number.isFinite(value) && value >= 25 && value <= 100 ? value : 100;
   } catch { return 100; }
 }
 
-export function WidgetAppearanceControls({ theme, onThemeChange }: { theme: WidgetTheme; onThemeChange: (theme: WidgetTheme) => void }) {
+export function WidgetAppearanceControls({ theme, onThemeChange, widget = 'daily' }: { theme: WidgetTheme; onThemeChange: (theme: WidgetTheme) => void; widget?: 'daily' | 'alarms' }) {
   const { t } = useTranslation();
-  const [opacity, setOpacity] = useState(savedOpacity);
+  const key = widget === 'alarms' ? 'aion2-desktop-alarms-opacity' : opacityKey;
+  const [opacity, setOpacity] = useState(() => savedOpacity(key));
   useEffect(() => {
-    window.aionDesktop?.setDailyOpacity(opacity / 100);
-    try { localStorage.setItem(opacityKey, String(opacity)); } catch { /* Keep this session's opacity. */ }
-  }, [opacity]);
+    if (widget === 'alarms') window.aionDesktop?.setAlarmsOpacity(opacity / 100);
+    else window.aionDesktop?.setDailyOpacity(opacity / 100);
+    try { localStorage.setItem(key, String(opacity)); } catch { /* Keep this session's opacity. */ }
+  }, [key, opacity, widget]);
   return <details className="widget-appearance">
     <summary className="icon-button" aria-label={t('widgetAppearance')} title={t('widgetAppearance')}><SlidersHorizontal size={16} aria-hidden="true" /></summary>
     <div className="widget-appearance-panel">
