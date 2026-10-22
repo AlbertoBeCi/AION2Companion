@@ -9,6 +9,8 @@ const preload = path.join(__dirname, 'preload.cjs');
 const nativeWindowControls = process.platform === 'win32';
 const mainMinSize = { width: 360, height: 320 };
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const fieldBossFeedUrl = 'https://www.aion2timers.com/api/fieldboss.php';
+const fieldBossFeedUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 let mainWindow;
 const widgets = Object.fromEntries(['daily', 'alarms'].map((kind) => [kind, {
   kind, window: undefined, opening: undefined, saveTimer: undefined, saving: Promise.resolve(),
@@ -137,8 +139,37 @@ async function serveApp(request) {
     const server = url.searchParams.get('server') ?? '';
     if (!/^(eu|nae|naw|sa)-[a-z]{3,20}$/.test(server) || url.searchParams.get('action') !== 'feed') return new Response('Invalid feed', { status: 400 });
     const query = new URLSearchParams({ action: 'feed', server });
-    try { return await net.fetch(`https://aion2companion.netlify.app/fbapi/api/fieldboss.php?${query}`); }
-    catch { return new Response('Feed unavailable', { status: 503 }); }
+    try {
+      const upstream = new URL(fieldBossFeedUrl);
+      upstream.search = query.toString();
+      const response = await net.fetch(upstream.toString(), { headers: {
+        accept: 'application/json, */*',
+        'accept-language': 'en-US,en;q=0.9',
+        origin: 'https://www.aion2timers.com',
+        referer: 'https://www.aion2timers.com/world-boss-timer/',
+        'user-agent': fieldBossFeedUserAgent,
+      } });
+      if (!response.ok) return new Response(JSON.stringify({ ok: false, error: 'Community feed unavailable' }), {
+        status: 502, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+      });
+      const payload = await response.json();
+      if (!payload || payload.ok !== true || !payload.kills || typeof payload.kills !== 'object' || Array.isArray(payload.kills)) {
+        return new Response(JSON.stringify({ ok: false, error: 'Invalid community feed response' }), {
+          status: 502, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+        });
+      }
+      const kills = Object.fromEntries(['elyos24', 'asmo24'].flatMap((id) => {
+        const entry = payload.kills[id];
+        return entry && typeof entry === 'object' && !Array.isArray(entry) ? [[id, entry]] : [];
+      }));
+      return new Response(JSON.stringify({ ok: true, ...(typeof payload.now === 'number' ? { now: payload.now } : {}), kills }), {
+        status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    } catch {
+      return new Response(JSON.stringify({ ok: false, error: 'Community feed request failed' }), {
+        status: 502, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+      });
+    }
   }
   let file;
   try { file = path.resolve(dist, `.${decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname)}`); }
@@ -235,3 +266,4 @@ else {
   });
   app.on('window-all-closed', () => app.quit());
 }
+
