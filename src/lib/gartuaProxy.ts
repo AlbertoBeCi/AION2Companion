@@ -25,7 +25,13 @@ export async function handleGartuaFeedRequest(request: Request): Promise<Respons
 
   try {
     const response = await fetch(upstream, {
-      headers: { accept: 'application/json, */*', 'user-agent': browserUserAgent },
+      headers: {
+        accept: 'application/json, */*',
+        'accept-language': 'en-US,en;q=0.9',
+        origin: 'https://www.aion2timers.com',
+        referer: 'https://www.aion2timers.com/world-boss-timer/',
+        'user-agent': browserUserAgent,
+      },
     });
     if (!response.ok) return json({ ok: false, error: 'Community feed unavailable' }, 502);
 
