@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="560" viewBox="0 0 1600 560" role="img" aria-labelledby="title desc">
+  <title id="title">AION2Companion — panel de seguimiento para AION2</title>
+  <desc id="desc">Banner del panel de AION2Companion con progreso, temporizadores de Gartua y reinicio semanal.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#111111" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#936dff"/>
+      <stop offset="1" stop-color="#7040e8"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a6f0df"/>
+      <stop offset="1" stop-color="#74dccb"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+
+  <!-- Companion's warm, high-contrast interface palette -->
+  <rect width="1600" height="560" rx="22" fill="#f6eedc"/>
+  <rect width="1600" height="560" rx="22" fill="url(#grid)"/>
+  <circle cx="1390" cy="34" r="235" fill="#8051f4" opacity=".12" filter="url(#soft)"/>
+  <circle cx="1510" cy="510" r="170" fill="#74dccb" opacity=".23" filter="url(#soft)"/>
+  <path d="M0 447C180 396 280 455 436 560H0Z" fill="#ffc247" opacity=".34"/>
+  <path d="M1445 0h155v255c-83-17-128-88-155-255Z" fill="#8051f4" opacity=".12"/>
+
+  <!-- Brand panel -->
+  <g transform="translate(76 74)">
+    <rect x="0" y="0" width="68" height="68" rx="13" fill="#111111"/>
+    <rect x="0" y="0" width="68" height="68" rx="13" fill="none" stroke="#111111" stroke-width="3"/>
+    <path d="M15 51 31 17h8l16 34H44l-3-8H28l-3 8Zm16-16h7l-4-10Z" fill="#f6eedc"/>
+    <circle cx="56" cy="13" r="5" fill="#ffc247"/>
+  </g>
+  <text x="164" y="101" fill="#111111" font-family="Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="3">TU COMPAÑERO DE AION2</text>
+  <text x="164" y="140" fill="#111111" font-family="Arial, sans-serif" font-size="31" font-weight="800" letter-spacing="-.7">AION2COMPANION</text>
+  <text x="78" y="221" fill="#111111" font-family="Arial, sans-serif" font-size="48" font-weight="800" letter-spacing="-1.8">Tu progreso.</text>
+  <text x="78" y="275" fill="#111111" font-family="Arial, sans-serif" font-size="48" font-weight="800" letter-spacing="-1.8">Tus horarios.</text>
+  <text x="78" y="319" fill="#4b463d" font-family="Arial, sans-serif" font-size="20" font-weight="500">Contadores, eventos y alertas para tus personajes.</text>
+
+  <!-- Feature chips -->
+  <g font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing=".5">
+    <rect x="78" y="369" width="148" height="43" rx="9" fill="#ffc247" stroke="#111111" stroke-width="2.5"/>
+    <text x="152" y="396" text-anchor="middle" fill="#111111">CONTADORES</text>
+    <rect x="239" y="369" width="166" height="43" rx="9" fill="#8051f4" stroke="#111111" stroke-width="2.5"/>
+    <text x="322" y="396" text-anchor="middle" fill="#ffffff">TEMPORIZADORES</text>
+    <rect x="418" y="369" width="118" height="43" rx="9" fill="#74dccb" stroke="#111111" stroke-width="2.5"/>
+    <text x="477" y="396" text-anchor="middle" fill="#111111">ALERTAS</text>
+  </g>
+  <g transform="translate(82 470)" fill="none" stroke="#111111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10" fill="#74dccb"/>
+    <path d="m7 12 3 3 7-7"/>
+    <path d="M35 12h355" stroke-dasharray="3 8" opacity=".4"/>
+  </g>
+  <text x="117" y="487" fill="#4b463d" font-family="Arial, sans-serif" font-size="15" font-weight="600">Tus datos se guardan en tu dispositivo</text>
+
+  <!-- App window mockup -->
+  <g transform="translate(625 55)">
+    <rect x="12" y="15" width="885" height="446" rx="18" fill="#111111" opacity=".16"/>
+    <rect x="0" y="0" width="885" height="446" rx="18" fill="#ffffff" stroke="#111111" stroke-width="3"/>
+    <!-- App header -->
+    <path d="M18 0h849a18 18 0 0 1 18 18v57H0V18A18 18 0 0 1 18 0Z" fill="#111111"/>
+    <g transform="translate(22 17)">
+      <rect width="38" height="38" rx="8" fill="#f6eedc"/>
+      <path d="M8 29 17 8h5l9 21h-7l-2-5h-7l-2 5Z" fill="#111111"/>
+      <circle cx="31" cy="8" r="3" fill="#ffc247"/>
+    </g>
+    <text x="73" y="34" fill="#f6eedc" font-family="Arial, sans-serif" font-size="14" font-weight="800" letter-spacing="1.2">AION2COMPANION</text>
+    <text x="73" y="54" fill="#b8b3a7" font-family="Arial, sans-serif" font-size="11" font-weight="600">PANEL DE OPERACIONES</text>
+    <g font-family="Arial, sans-serif" font-size="12" font-weight="700">
+      <rect x="249" y="19" width="99" height="36" rx="8" fill="#292929"/>
+      <text x="298" y="42" text-anchor="middle" fill="#f6eedc">Resumen</text>
+      <text x="385" y="42" fill="#d8d2c6">Contadores</text>
+      <rect x="472" y="19" width="126" height="36" rx="8" fill="#ffc247"/>
+      <text x="535" y="42" text-anchor="middle" fill="#111111">Temporizadores</text>
+      <text x="632" y="42" fill="#d8d2c6">Personajes</text>
+    </g>
+    <rect x="780" y="22" width="82" height="32" rx="8" fill="#292929" stroke="#555"/>
+    <circle cx="797" cy="38" r="5" fill="#74dccb"/>
+    <text x="808" y="42" fill="#f6eedc" font-family="Arial, sans-serif" font-size="11" font-weight="700">EU · SIEL</text>
+
+    <!-- Summary cards -->
+    <text x="24" y="111" fill="#111111" font-family="Arial, sans-serif" font-size="18" font-weight="800">Resumen de actividad</text>
+    <text x="24" y="132" fill="#5f594f" font-family="Arial, sans-serif" font-size="11">Tu progreso y próximos horarios, de un vistazo</text>
+    <g>
+      <rect x="24" y="153" width="253" height="105" rx="11" fill="#f6eedc" stroke="#111111" stroke-width="2.5"/>
+      <rect x="24" y="153" width="253" height="8" rx="4" fill="#ffc247"/>
+      <text x="42" y="187" fill="#555047" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing=".7">PROGRESO SEMANAL</text>
+      <text x="42" y="229" fill="#111111" font-family="Arial, sans-serif" font-size="34" font-weight="800">8<tspan fill="#777064" font-size="20"> / 12</tspan></text>
+      <circle cx="240" cy="209" r="25" fill="none" stroke="#e5dac2" stroke-width="7"/>
+      <circle cx="240" cy="209" r="25" fill="none" stroke="#8051f4" stroke-width="7" stroke-dasharray="105 157" stroke-linecap="round" transform="rotate(-90 240 209)"/>
+      <rect x="300" y="153" width="253" height="105" rx="11" fill="url(#violet)" stroke="#111111" stroke-width="2.5"/>
+      <text x="319" y="187" fill="#efeaff" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing=".7">REINICIO SEMANAL</text>
+      <text x="319" y="226" fill="#ffffff" font-family="Arial, sans-serif" font-size="29" font-weight="800">02:18:46</text>
+      <text x="319" y="245" fill="#eee8ff" font-family="Arial, sans-serif" font-size="10">Cuenta atrás local</text>
+      <rect x="576" y="153" width="285" height="105" rx="11" fill="#111111" stroke="#111111" stroke-width="2.5"/>
+      <text x="596" y="187" fill="#b8b3a7" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing=".7">PERSONAJE ACTIVO</text>
+      <circle cx="618" cy="222" r="17" fill="#74dccb"/>
+      <path d="M610 228v-3a8 8 0 0 1 16 0v3m-13-11a5 5 0 1 0 10 0 5 5 0 0 0-10 0Z" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round"/>
+      <text x="647" y="220" fill="#f6eedc" font-family="Arial, sans-serif" font-size="15" font-weight="800">Tu personaje</text>
+      <text x="647" y="239" fill="#aaa499" font-family="Arial, sans-serif" font-size="11">Perfil local · progreso guardado</text>
+    </g>
+
+    <!-- Gartua feed -->
+    <rect x="24" y="280" width="837" height="139" rx="11" fill="#ffffff" stroke="#111111" stroke-width="2.5"/>
+    <path d="M36 280h813a12 12 0 0 1 12 12v35H24v-35a12 12 0 0 1 12-12Z" fill="#f6eedc"/>
+    <circle cx="44" cy="304" r="5" fill="#74dccb" stroke="#111111" stroke-width="1.5"/>
+    <text x="59" y="309" fill="#514b42" font-family="Arial, sans-serif" font-size="10" font-weight="700" letter-spacing=".7">FEED COMUNITARIO · ABYSSLOGS</text>
+    <text x="652" y="309" fill="#514b42" font-family="Arial, sans-serif" font-size="11" font-weight="700">SERVIDOR</text>
+    <rect x="730" y="289" width="111" height="27" rx="6" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+    <text x="745" y="307" fill="#111111" font-family="Arial, sans-serif" font-size="11" font-weight="700">EU · SIEL</text>
+    <path d="m823 300 5 5 5-5" fill="none" stroke="#111111" stroke-width="1.5"/>
+    <text x="43" y="351" fill="#111111" font-family="Arial, sans-serif" font-size="16" font-weight="800">Gartua Eterno</text>
+    <text x="43" y="371" fill="#5f594f" font-family="Arial, sans-serif" font-size="11">Isla de la Eternidad · Elyos</text>
+    <rect x="43" y="384" width="137" height="21" rx="10" fill="#e7f8f3" stroke="#74dccb"/>
+    <circle cx="56" cy="394.5" r="3.5" fill="#299e87"/>
+    <text x="66" y="398" fill="#246e61" font-family="Arial, sans-serif" font-size="9" font-weight="700">ESTIMACIÓN COMUNITARIA</text>
+    <text x="625" y="359" fill="#111111" font-family="Arial, sans-serif" font-size="27" font-weight="800" text-anchor="end">00:42:18</text>
+    <text x="625" y="380" fill="#5f594f" font-family="Arial, sans-serif" font-size="11" text-anchor="end">reaparece en</text>
+    <rect x="652" y="343" width="177" height="48" rx="8" fill="#ffc247" stroke="#111111" stroke-width="2"/>
+    <path d="M669 357v10l7 4m11-8a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="709" y="371" fill="#111111" font-family="Arial, sans-serif" font-size="12" font-weight="800">AVISO ACTIVABLE</text>
+    <text x="709" y="384" fill="#393329" font-family="Arial, sans-serif" font-size="9">Sonido y alarmas</text>
+
+    <!-- footer rails and status -->
+    <rect x="24" y="430" width="837" height="1" fill="#ddd4c2"/>
+    <text x="24" y="439" fill="#665f54" font-family="Arial, sans-serif" font-size="9" font-weight="600">CONTADORES MANUALES</text>
+    <circle cx="837" cy="435" r="4" fill="#74dccb" stroke="#111111" stroke-width="1"/>
+    <text x="824" y="439" fill="#665f54" font-family="Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">DATOS LOCALES</text>
+  </g>
+
+  <!-- Small decorative marks in the product palette -->
+  <path d="m570 144 8 8-8 8-8-8Z" fill="#ffc247" stroke="#111111" stroke-width="2"/>
+  <path d="m569 156 8 8-8 8-8-8Z" fill="#74dccb" stroke="#111111" stroke-width="2"/>
+  <circle cx="565" cy="212" r="4" fill="#8051f4"/>
+  <circle cx="589" cy="212" r="4" fill="#ffc247"/>
+</svg>

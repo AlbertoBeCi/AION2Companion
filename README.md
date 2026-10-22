@@ -1,6 +1,6 @@
 <div align="center">
 
-![AION2Companion · panel de seguimiento](docs/assets/aion2-companion-banner-v2.png)
+![AION2Companion · panel de seguimiento de AION2](docs/assets/aion2-companion-banner.svg)
 
 # AION2Companion
 
@@ -107,7 +107,7 @@ Si te resulta útil, puedes [invitarme a un café en Ko-fi](https://ko-fi.com/S0
 
 <div align="center">
 
-![AION2Companion · tracking dashboard](docs/assets/aion2-companion-banner-v2.png)
+![AION2Companion · AION2 tracking dashboard](docs/assets/aion2-companion-banner.svg)
 
 # AION2Companion
 
